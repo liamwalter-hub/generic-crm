@@ -266,6 +266,12 @@ tbody tr{cursor:pointer}
 .diff-field{color:var(--txt2);width:140px;flex-shrink:0}
 .diff-old{color:var(--red-txt);text-decoration:line-through;flex:1}
 .diff-new{color:var(--green-txt);flex:1;font-weight:500}
+
+.help-tip{background:#e8f5ee;border:1px solid #4CAF7D44;border-radius:6px;padding:10px 14px;margin:12px 0;font-size:12px;color:var(--txt)}
+#help-content h3{font-size:15px;font-weight:700;color:var(--navy);margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--bdr2)}
+#help-content h3:first-child{margin-top:0}
+#help-content p{font-size:13px;color:var(--txt);line-height:1.6;margin-bottom:10px}
+#help-content strong{color:var(--navy)}
 </style>
 </head>
 <body>
@@ -297,9 +303,11 @@ tbody tr{cursor:pointer}
     <div class="ni" id="ni-approvals" onclick="nav('approvals')" style="display:none">&#x1F4EC; <span>Approvals</span><span class="nb red" id="approvals-nb" style="display:none">0</span></div>
     <div class="ns">Reporting</div>
     <div class="ni" id="ni-export" onclick="nav('export')">&#x2B07; <span>Export</span></div>
-  <div style="padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto">
-    <button class="btn btn-sm" onclick="logout()" style="width:100%;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:11px">&#x2192; Sign out</button>
-  </div>
+    <div class="ns">Support</div>
+    <div class="ni" id="ni-help" onclick="navHelp()">&#x2753; <span>Help</span></div>
+    <div style="padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto">
+      <button class="btn btn-sm" onclick="logout()" style="width:100%;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:11px">&#x2192; Sign out</button>
+    </div>
   </div>
 </div>
 <div class="main">
@@ -319,6 +327,7 @@ tbody tr{cursor:pointer}
         <option value="">All advisers</option>
         <option>Emma Clarke</option><option>James Morgan</option><option>Rachel Patel</option>
       </select>
+      <button class="btn btn-sm" id="help-btn" onclick="navHelp(vw==='cd'?'cd:'+ct:vw)" title="Help" style="font-size:13px;padding:4px 8px">&#x2753;</button>
       <button class="btn btn-p btn-sm" id="cta" onclick="nav('add')"><span id="cta-lbl">+ New client</span></button>
       <div class="topbar-user" id="topbar-user"></div>
     </div>
@@ -519,6 +528,11 @@ function canSee(adviserField){
 let _sort={key:null,dir:1,tbl:null};
 let _taskRoleFilter='All';
 function setTaskRoleFilter(r){_taskRoleFilter=r;rV();}
+let _helpCtx=null; // tracks where user came from when opening help
+function navHelp(ctx){
+  _helpCtx=ctx||vw+(vw==='cd'?':'+ct:''); // capture current view + client tab if on client profile
+  nav('help');
+}
 let _cfScenario='base';
 function sScenario(s){_cfScenario=s;sTab('cashflow');}
 function sortBy(tbl,key){
@@ -896,6 +910,283 @@ function lDb(){
   return false;
 }
 
+// ── Help & User Guide ─────────────────────────────────────────────────────────
+function pgHelp(){
+  const role=_session?.user?.role||'adviser';
+  const ctx=_helpCtx||'';
+
+  // ── Topic definitions ────────────────────────────────────────────────────────
+  const TOPICS={
+    // shared across roles
+    login:{id:'login',label:'Logging in & PIN',icon:'🔐'},
+    dashboard:{id:'dashboard',label:'Dashboard',icon:'🏠'},
+    clients:{id:'clients',label:'Client list & search',icon:'👥'},
+    cd_overview:{id:'cd_overview',label:'Client profile — Overview',icon:'👤'},
+    cd_personal:{id:'cd_personal',label:'Client profile — Personal details',icon:'📋'},
+    cd_ff:{id:'cd_ff',label:'Client profile — Fact find',icon:'📊'},
+    cd_goals:{id:'cd_goals',label:'Client profile — Goals',icon:'🎯'},
+    cd_cashflow:{id:'cd_cashflow',label:'Client profile — Cash flow',icon:'📈'},
+    cd_comms:{id:'cd_comms',label:'Client profile — Communications',icon:'💬'},
+    cd_docs:{id:'cd_docs',label:'Client profile — Documents',icon:'📁'},
+    cd_risk:{id:'cd_risk',label:'Client profile — Risk profile',icon:'⚖️'},
+    cd_policies:{id:'cd_policies',label:'Client profile — Policies',icon:'📄'},
+    cd_fees:{id:'cd_fees',label:'Client profile — Fees',icon:'£'},
+    cd_cases:{id:'cd_cases',label:'Client profile — Service cases',icon:'💼'},
+    cd_reviews:{id:'cd_reviews',label:'Client profile — Reviews',icon:'📅'},
+    cd_tasks:{id:'cd_tasks',label:'Client profile — Tasks',icon:'✅'},
+    cd_compliance:{id:'cd_compliance',label:'Client profile — Compliance',icon:'🛡️'},
+    reviews:{id:'reviews',label:'Reviews & calendar',icon:'📅'},
+    tasks:{id:'tasks',label:'Tasks & queues',icon:'✅'},
+    sr_task:{id:'sr_task',label:'Suitability report tasks',icon:'📝'},
+    households:{id:'households',label:'Households',icon:'🏠'},
+    leads:{id:'leads',label:'Leads pipeline',icon:'🔍'},
+    policies:{id:'policies',label:'Policies & investments',icon:'📈'},
+    fees:{id:'fees',label:'Fees & fee ledger',icon:'£'},
+    approvals:{id:'approvals',label:'Pending approvals',icon:'📬'},
+    export:{id:'export',label:'Export & backup',icon:'⬇️'},
+    audit:{id:'audit',label:'Audit trail',icon:'🔒'},
+    portal:{id:'portal',label:'Client portal',icon:'🌐'},
+  };
+
+  // Role → which topics to show, in order
+  const roleTopics={
+    management:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','approvals','export','audit','portal'],
+    adviser:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','portal'],
+    administrator:['login','dashboard','clients','cd_overview','cd_personal','cd_comms','cd_docs','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','households','leads','approvals','export'],
+    paraplanner:['login','dashboard','clients','cd_overview','cd_ff','cd_risk','cd_goals','cd_cashflow','cd_policies','cd_cases','cd_comms','cd_compliance','reviews','tasks','sr_task'],
+  };
+
+  // ── Derive active topic from context ─────────────────────────────────────────
+  const ctxMap={
+    dashboard:'dashboard',clients:'clients',leads:'leads',revs:'reviews',cal:'reviews',
+    upcoming:'reviews',overdue:'reviews',tasks:'tasks',households:'households',
+    policies:'policies',fees:'fees',flows:'fees',feeledger:'fees',
+    audit:'audit',approvals:'approvals',export:'export',
+    'cd:overview':'cd_overview','cd:personal':'cd_personal','cd:fact find':'cd_ff',
+    'cd:goals':'cd_goals','cd:cashflow':'cd_cashflow','cd:comms':'cd_comms',
+    'cd:documents':'cd_docs','cd:risk profile':'cd_risk','cd:policies':'cd_policies',
+    'cd:fees':'cd_fees','cd:service cases':'cd_cases','cd:reviews':'cd_reviews',
+    'cd:tasks':'cd_tasks','cd:compliance':'cd_compliance',
+    'cd:transactions':'cd_cashflow','cd:fee ledger':'cd_fees',
+  };
+  const myTopics=(roleTopics[role]||roleTopics.adviser).map(id=>TOPICS[id]);
+  // ctx may be a direct topic id (from setHelpTopic) or a view name (from navHelp)
+  let activeTopic=TOPICS[ctx]?ctx:(ctxMap[ctx]||myTopics[0].id);
+  // Make sure the mapped topic is valid for this role
+  if(!myTopics.find(t=>t.id===activeTopic))activeTopic=myTopics[0].id;
+
+  // ── Content per topic ─────────────────────────────────────────────────────────
+  function content(id){
+    const r=role;
+    const isAdv=r==='adviser', isMgmt=r==='management', isAdmin=r==='administrator', isPara=r==='paraplanner';
+    const items={
+      login:`<h3>Logging in</h3>
+<p>Open the Nexus IFA URL in your browser. Select your account from the login screen and enter your 4-digit PIN using the keypad.</p>
+<div class="help-tip">⚠️ Change your default PIN (1234) before going live. Go to your user settings or ask your system administrator.</div>
+<h3>Switching accounts</h3>
+<p>Each user has their own PIN. Simply click a different name on the login screen to switch accounts. Data is shared — changes made under one account are visible to all users on the same device.</p>`,
+
+      dashboard:`<h3>Your Dashboard</h3>
+<p>The Dashboard is your starting point every time you log in. It gives you an at-a-glance view of the practice.</p>
+<h3>KPI Strip</h3>
+<p>The four headline numbers at the top (Total clients, AUM, Annual fees, Open cases) are clickable — tap any one to navigate to that section.</p>
+<h3>Action cards</h3>
+<p><strong>Red</strong> — overdue items need immediate attention. <strong>Amber</strong> — upcoming deadlines or items awaiting action. <strong>Green</strong> — all clear.</p>
+<h3>Reviews this week</h3>
+<p>All reviews scheduled in the next 7 days. Click a client name to go straight to their record.</p>
+${isMgmt?'<h3>Practice breakdown</h3><p>The table at the bottom shows each adviser&#39;s client count, AUM, and fees. Click any row to filter the system to that adviser&#39;s data.</p>':''}`,
+
+      clients:`<h3>All clients</h3>
+<p>The client list shows ${isMgmt||isAdmin||isPara?'all clients across the practice':'your clients'}. Use the search bar to find clients by name, email, or phone number. Click any column header to sort.</p>
+<h3>Adding a client</h3>
+<p>Click <strong>+ New client</strong> in the topbar. Fill in the details and click Save. The client is created and you land on their profile.</p>
+${isMgmt?'<h3>Adviser filter</h3><p>Use the All advisers dropdown in the topbar to filter to a single adviser. Or use the View as: dropdown in the top-right corner.</p>':''}`,
+
+      cd_overview:`<h3>Client overview</h3>
+<p>The Overview tab is the starting point for any client record. It shows a summary of their AUM, annual fees, open cases, recent service cases, goals snapshot, and compliance status.</p>
+<h3>Navigating the profile</h3>
+<p>Use the tabs below the client name to move between sections. The active tab is highlighted. Scroll the tab bar sideways on mobile.</p>
+<h3>Client view preview</h3>
+<p>Click the <strong>👁 Client view</strong> button in the profile header to preview exactly what the client sees in their portal — useful before setting up portal access.</p>`,
+
+      cd_personal:`<h3>Personal details</h3>
+<p>Name, title, date of birth, NI number, contact details, address, marital status, employment, and health notes are all stored here.</p>
+<h3>Client portal PIN</h3>
+<p>Scroll to the <em>Client portal access</em> section. Set a 4-digit PIN to give the client access to their portal. Once set, they can log in using their email address and this PIN.</p>`,
+
+      cd_ff:`<h3>Fact find</h3>
+<p>The fact find holds the core financial data that underpins advice: net monthly income, partner income, total monthly expenditure, mortgage/rent, savings balance, property value, outstanding debts, pension value, and ISA/investment value.</p>
+<p>It also records planning preferences: risk timeframe, goals summary, emergency fund target, dependants, state pension inclusion, and CFD date.</p>
+${isPara?'<div class="help-tip">💡 Review this tab carefully when working on a suitability report — income and expenditure underpin affordability and the ATR assessment.</div>':''}`,
+
+      cd_goals:`<h3>Financial goals</h3>
+<p>Goals are linked to the client&#39;s overall plan. Each goal has a description, category, timeframe, priority, and status.</p>
+<h3>Adding a goal</h3>
+<p>Click <strong>+ Add goal</strong>. Fill in the description and details. Goals can be linked to specific policies or projections.</p>
+<p>Clients can also submit new goals via their portal — these arrive as pending approvals.</p>`,
+
+      cd_cashflow:`<h3>Cash flow modelling</h3>
+<p>Run retirement projections based on the client&#39;s fact find data. Three scenarios are available: Base, Optimistic, and Pessimistic.</p>
+<p>A <strong>2008-style stress test</strong> applies historical crash returns to show portfolio resilience.</p>
+<h3>Scenarios</h3>
+<p>Switch between scenarios using the tabs above the chart. Each uses different growth and inflation assumptions.</p>
+<h3>Custom events</h3>
+<p>Add one-off events (inheritance, property purchase, school fees) to the timeline via the Transactions tab.</p>`,
+
+      cd_comms:`<h3>Communications log</h3>
+<p>Every phone call, email, meeting, letter, or text message with the client should be logged here. This creates an audit trail of all client contact.</p>
+<h3>Logging a communication</h3>
+<p>Click <strong>+ Log communication</strong>. Select type, date, enter notes, and save. The entry appears in the log in reverse date order.</p>`,
+
+      cd_docs:`<h3>Document management</h3>
+<p>The documents tab tracks every document the practice holds or has requested from the client.</p>
+<p>Status options: <strong>Received</strong>, <strong>Outstanding</strong> (requested, not yet received), <strong>Not required</strong>, <strong>Expired</strong>.</p>
+<p>Set received dates and expiry dates to track document currency. Outstanding documents appear as compliance warnings.</p>`,
+
+      cd_risk:`<h3>Risk profile</h3>
+<p>Records the client&#39;s Attitude to Risk (ATR) score (1–10), capacity for loss notes, investment experience, and any conflict between ATR and capacity for loss.</p>
+<h3>Risk categories</h3>
+<p>1–3: Cautious. 4–6: Moderate. 7–8: Moderately adventurous. 9–10: Adventurous.</p>
+${isPara?'<div class="help-tip">💡 The risk profile is auto-filled into suitability report tasks when the adviser selects a client. Always verify it reflects the most recent assessment before drafting.</div>':''}`,
+
+      cd_policies:`<h3>Policies & investments</h3>
+<p>All policies held through the practice are listed here — pensions, SIPPs, ISAs, GIAs, bonds, protection, and drawdown plans.</p>
+<p>Each policy shows type, provider, plan number, start date, current value, monthly contribution, status, and investment holdings.</p>
+<h3>Adding a policy</h3>
+<p>Click <strong>+ Add policy</strong>. Enter the policy details and investment allocations. Save.</p>`,
+
+      cd_fees:`<h3>Fee arrangements</h3>
+<p>The Fees tab shows all ongoing and one-off fee arrangements for the client — adviser charges, platform fees, and any other agreed fees.</p>
+<h3>Fee ledger</h3>
+<p>The Fee Ledger tab shows the detailed transaction history of every fee charged and received.</p>`,
+
+      cd_cases:`<h3>Service cases</h3>
+<p>Cases track new and existing business from start to completion. Each case has a category (New Client, Top-up, Withdrawal, Fund Switch, etc.), advice type, status, and compliance flags.</p>
+<h3>Compliance flags</h3>
+<p>Each case tracks: AML checked, suitability report issued, pre-sale check done, post-sale check done, and LOA received.</p>
+<h3>SR cases from tasks</h3>
+<p>When an adviser creates a Suitability Report task, a service case is automatically created and linked to it. The case will show the adviser&#39;s brief, risk profile, recommended product, and documents required — everything the paraplanner needs.</p>
+${isPara?'<div class="help-tip">💡 Cases created from SR tasks show a "📝 SR task assigned" badge. Use the Edit button to update status as work progresses.</div>':''}`,
+
+      cd_reviews:`<h3>Review history</h3>
+<p>All past and scheduled reviews are listed here with date, type, location, status, checklist completion, and outcome notes.</p>
+<h3>Scheduling a review</h3>
+<p>Click <strong>+ Schedule review</strong>. Set date, time, review type, location, and next review date. Save.</p>
+<h3>Review checklist</h3>
+<p>Each review has a built-in checklist. Tick items off during the meeting. The progress indicator updates live.</p>`,
+
+      cd_tasks:`<h3>Client tasks</h3>
+<p>This tab shows all tasks linked to this specific client. Create tasks here to keep them organised by client rather than hunting through the global task list.</p>
+<p>Tasks assigned to the Paraplanner or Administrator will appear in their respective queues in the global Tasks view.</p>
+<p>If a task is linked to a service case (e.g. a suitability report task), a <strong>📝 View case</strong> link appears — click it to jump straight to the linked case.</p>`,
+
+      cd_compliance:`<h3>Compliance summary</h3>
+<p>A single-page view of the client&#39;s compliance status: KYC verified date, AML status, suitability file status, vulnerable client flag, and service status.</p>
+<p>Outstanding items are highlighted in amber or red.</p>`,
+
+      reviews:`<h3>Reviews</h3>
+<p>Four views are available from the sidebar: Calendar, All reviews, Upcoming, and Overdue.</p>
+<h3>Calendar view</h3>
+<p>Shows reviews plotted on a month calendar. Navigate between months using the arrows. Click a review to open it.</p>
+<h3>Scheduling a review</h3>
+<p>Click <strong>+ Schedule review</strong> from any reviews view or from a client&#39;s Reviews tab. Select client, date, time, type, and location.</p>
+<h3>Completing a review</h3>
+<p>Open the review, tick off the checklist, set status to Completed, enter outcome notes, and set the next review date.</p>`,
+
+      tasks:`<h3>Tasks</h3>
+<p>The Tasks view shows all tasks across ${isMgmt||isAdmin?'the practice':'your clients'}. Use the role filter tabs at the top to switch between All, Adviser, Administrator, and Paraplanner queues.</p>
+${isAdmin?'<div class="help-tip">💡 Your view defaults to the Administrator queue — tasks assigned to you by advisers.</div>':''}
+${isPara?'<div class="help-tip">💡 Your view defaults to the Paraplanner queue — tasks assigned to you by advisers.</div>':''}
+<h3>Creating a task</h3>
+<p>Click <strong>+ New task</strong>. Select client, title, category, priority, due date, adviser, and the role queue to assign it to (Adviser, Administrator, or Paraplanner).</p>
+<h3>Completing a task</h3>
+<p>Tick the checkbox next to a task to mark it done. Or click Edit to update its details.</p>`,
+
+      sr_task:`<h3>Suitability report tasks</h3>
+<p>When you create a task and select <strong>Suitability report</strong> as the category, an additional section appears in the task form.</p>
+<h3>What to fill in</h3>
+<p><strong>Case category</strong> — the type of business (New Client, Existing Client, Top-up, etc.). <strong>Advice type</strong> — the product being recommended. <strong>Risk profile</strong> — auto-filled from the client&#39;s fact find. <strong>Recommended product/wrapper</strong> — e.g. SIPP, S&S ISA, Bond. <strong>Approximate investment</strong> — the investment amount. <strong>Provider</strong> — the intended platform or provider. <strong>Basis of advice</strong> — your brief for the paraplanner. <strong>Documents required</strong> — what you still need from the client.</p>
+<h3>What happens on save</h3>
+<p>A service case is automatically created on the client&#39;s record, pre-populated with all the details you entered. The task and case are linked. The paraplanner sees your full brief in their task queue.</p>
+${isPara?'<div class="help-tip">💡 When you receive an SR task, click the client name to go to their profile, then navigate to Service Cases to see the full linked case with the adviser&#39;s brief.</div>':''}`,
+
+      households:`<h3>Households</h3>
+<p>Households link related clients (e.g. couples) for combined reporting and joint cash flow projections.</p>
+<h3>Creating a household</h3>
+<p>Go to Households in the sidebar. Click <strong>+ New household</strong>. Select the primary client and partner. Assign household roles (Primary, Partner, Joint). Save.</p>
+<p>If household members have different advisers assigned, the system flags a mismatch warning.</p>`,
+
+      leads:`<h3>Leads pipeline</h3>
+<p>Track prospective clients from first contact through to onboarding.</p>
+<h3>Lead statuses</h3>
+<p><strong>Initial</strong> — first contact made. <strong>Proceeding</strong> — actively progressing. <strong>Not Proceeding</strong> — no longer active.</p>
+<h3>Converting a lead</h3>
+<p>Open the lead record and click <strong>Convert to client</strong>. A client record is created with the lead&#39;s details pre-filled.</p>`,
+
+      policies:`<h3>Policies & investments</h3>
+<p>The global Policies view shows all policies across ${isMgmt||isAdmin?'the practice':'your clients'}. Filter by adviser, sort by any column.</p>
+<p>Click any policy row to navigate to that client&#39;s record and policies tab.</p>`,
+
+      fees:`<h3>Fees & fee ledger</h3>
+<p>The Fees view shows all fee arrangements. The Fees Ledger shows individual transactions. Cash Flows shows standing instructions — contributions and regular drawdown.</p>
+<p>All views support adviser filtering and CSV export.</p>`,
+
+      approvals:`<h3>Pending approvals</h3>
+<p>When a client submits a change via their portal, it lands here before being applied. Nothing a client submits takes effect until it is approved.</p>
+<h3>Reviewing a change</h3>
+<p>The diff view shows the old value and the new value side by side. Click <strong>Approve & apply</strong> to apply the change to the client record, or <strong>Reject</strong> to decline it.</p>
+<p>The red badge on the Approvals sidebar item shows how many are waiting.</p>`,
+
+      export:`<h3>Export data</h3>
+<p>Download CSV exports of clients, policies, reviews, fees, and tasks. Exports respect the current adviser filter.</p>
+${isMgmt?'<p>As Management you can also download a full JSON backup of the entire database. Keep this file secure — it contains all client data.</p>':''}`,
+
+      audit:`<h3>Audit trail</h3>
+<p>A full log of every action taken in the system — logins, record updates, case creations, document additions. Visible to Management only.</p>
+<p>The log is trimmed to the 2,000 most recent entries. Search by client name or scroll to find specific events.</p>`,
+
+      portal:`<h3>Client portal</h3>
+<p>Give clients secure online access to their own financial information.</p>
+<h3>Setting up access</h3>
+<p>Open the client profile → Personal tab. Scroll to <em>Client portal access</em>. Set a 4-digit PIN. Save. Give the client the practice URL and their PIN — they log in with their email address.</p>
+<h3>What clients can do</h3>
+<p>View their portfolio, fees, reviews, goals, documents, and personal details. Submit updates to personal details, financial information, and goals — all changes come to you as pending approvals before being applied.</p>
+<h3>Previewing the portal</h3>
+<p>Click <strong>👁 Client view</strong> on any client profile to see their portal as they would see it.</p>`,
+    };
+    return items[id]||'<p>No guidance available for this topic.</p>';
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const roleLabel={'management':'Management','adviser':'Adviser','administrator':'Administrator','paraplanner':'Paraplanner'}[role]||'User';
+
+  const menuItems=myTopics.map(t=>{
+    const active=t.id===activeTopic;
+    return '<div onclick="setHelpTopic(\''+t.id+'\')" style="padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:7px;'+(active?'background:var(--navy);color:#fff;font-weight:500':'color:var(--txt2)')+' ">'+
+      '<span style="font-size:13px">'+t.icon+'</span><span>'+t.label+'</span></div>';
+  }).join('');
+
+  return '<div style="display:grid;grid-template-columns:240px 1fr;gap:0;height:calc(100vh - 110px);overflow:hidden">'+
+    // Left menu
+    '<div style="border-right:1px solid var(--bdr2);overflow-y:auto;padding:12px 8px">'+
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);padding:4px 12px 8px">'+roleLabel+' Guide</div>'+
+      menuItems+
+    '</div>'+
+    // Right content
+    '<div id="help-content" style="overflow-y:auto;padding:24px 32px;max-width:700px">'+
+      '<div style="font-size:10px;color:var(--txt3);margin-bottom:16px;display:flex;align-items:center;gap:4px">'+
+        (activeTopic!==myTopics[0].id?'<span style="cursor:pointer;color:var(--navy)" onclick="setHelpTopic(\''+myTopics[0].id+'\')">Help</span> › ':'<span>Help</span> › ')+
+        '<span>'+myTopics.find(t=>t.id===activeTopic)?.label+'</span>'+
+      '</div>'+
+      content(activeTopic)+
+    '</div>'+
+  '</div>';
+}
+function setHelpTopic(id){
+  _helpCtx=id; // reuse _helpCtx to track active topic within help
+  rV();
+}
+
 function logAudit(action,type,desc,opts){
   if(!db.au)db.au=[];
   const user=_session?_session.user.name:'System';
@@ -931,6 +1222,7 @@ function nav(v,id){
   const ni=document.getElementById('ni-'+v);
   if(ni)ni.classList.add('active');
   else if(v==='cd'||v==='ld')document.getElementById('ni-clients').classList.add('active');
+  else if(v==='help')document.getElementById('ni-help').classList.add('active');
   document.getElementById('cal-nav').style.display=v==='cal'?'flex':'none';
   document.getElementById('sw').style.display=['clients','leads'].includes(v)?'flex':'none';
   const showAf=['clients','leads','cal','revs','upcoming','overdue','policies','fees','reports','tasks','households','flows','feeledger','investments'].includes(v)&&v!=='audit';
@@ -938,7 +1230,7 @@ function nav(v,id){
   const cta=document.getElementById('cta'),cl=document.getElementById('cta-lbl');
   if(v==='leads'){cl.textContent='+ New lead';cta.onclick=()=>oAddLead();}
   else{cl.textContent='+ New client';cta.onclick=()=>nav('add');}
-  const titles={dashboard:'Dashboard',clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',export:'Export data',cd:'Client record',ld:'Lead record',approvals:'Pending approvals'};
+  const titles={dashboard:'Dashboard',clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',export:'Export data',cd:'Client record',ld:'Lead record',approvals:'Pending approvals',help:'Help & User Guide'};
   document.getElementById('pt').textContent=titles[v]||v;
   // Mobile nav active state
   ['dashboard','clients','tasks','revs'].forEach(id=>{
@@ -986,6 +1278,7 @@ function rV(){
   else if(vw==='hd')el.innerHTML=pgHD();
   else if(vw==='investments')el.innerHTML=pgInvestments();
   else if(vw==='audit'){if(!isManagement()){el.innerHTML='<div class="empty">Access denied — management only.</div>';}else{el.innerHTML=pgAudit();}}
+  else if(vw==='help')el.innerHTML=pgHelp();
   else if(vw==='flows')el.innerHTML=pgFlows();
   else if(vw==='feeledger')el.innerHTML=pgFeeLedger();
   else if(vw==='export')el.innerHTML=pgExp();
@@ -1301,6 +1594,7 @@ function pgCD(){
       ${c.vulnerable?'<span class="badge br">Vulnerable</span>':''}
       <button class="btn btn-sm" onclick="printClient(${c.id})" style="margin-left:4px">&#128438; Export PDF</button>
       <button class="btn btn-sm" onclick="buildAgenda(${c.id})">&#128203; Review agenda</button>
+      <button class="btn btn-sm" onclick="navHelp('cd:'+ct)" title="Help for this tab" style="background:var(--bg2);border-color:var(--bdr2);font-size:12px">&#x2753; Help</button>
       <button class="btn btn-sm" onclick="previewPortal(${c.id})" style="background:var(--blue-bg);border-color:var(--blue-bdr);color:var(--blue-txt)">&#x1F441; Client view</button>
     </div>
   </div>
@@ -4595,7 +4889,7 @@ function portalLogout(){
 }
 
 // ── Portal rendering ──────────────────────────────────────────────────────────
-const PORTAL_TABS=['dashboard','details','goals','fact find','documents','policies','reviews','fees'];
+const PORTAL_TABS=['dashboard','details','goals','fact find','documents','policies','reviews','fees','help'];
 function renderPortalNav(){
   const nav=document.getElementById('portal-nav');if(!nav)return;
   nav.innerHTML=PORTAL_TABS.map(t=>
@@ -4610,9 +4904,35 @@ function renderPortalTab(){
   const html={
     dashboard:portalDashboard,details:portalDetails,'fact find':portalFactFind,
     goals:portalGoals,documents:portalDocuments,policies:portalPolicies,
-    reviews:portalReviews,fees:portalFees
+    reviews:portalReviews,fees:portalFees,help:portalHelp
   }[_portalTab];
   el.innerHTML=html?html(c):'';
+}
+
+function portalHelp(){
+  const sections=[
+    {icon:'🏠',title:'Dashboard',text:'Your dashboard gives you a summary of your total portfolio value, annual fees, and next scheduled review. It also shows a snapshot of your current policies and goals.'},
+    {icon:'👤',title:'Your details',text:'View and update your personal information — name, contact details, address, marital status, and employment. Any changes you submit go to your adviser for review before being applied. Nothing changes automatically.'},
+    {icon:'🎯',title:'Goals',text:'See the financial goals you have agreed with your adviser. You can also submit a new goal for your adviser to review and add to your plan.'},
+    {icon:'📊',title:'Financial information',text:'This section shows the financial data your adviser holds for you — income, expenditure, savings, property, and debts. You can submit updates here if your circumstances have changed. Your adviser reviews all changes before they are applied.'},
+    {icon:'📁',title:'Documents',text:'Track the documents your adviser holds on file and any that are still outstanding. Documents are marked as Received, Outstanding, Not required, or Expired.'},
+    {icon:'📄',title:'Policies',text:'See all your investment and insurance policies managed through Nexus IFA — including current values, providers, plan numbers, and investment holdings. Values shown are the most recent on file and are not live prices.'},
+    {icon:'📅',title:'Reviews',text:'View your review history and upcoming scheduled reviews. If you\'d like to book or rearrange a review, please contact your adviser directly by phone or email.'},
+    {icon:'£',title:'Fees',text:'See your ongoing fee arrangements and a history of recent fee transactions. If you have any questions about your fees, please speak to your adviser.'},
+    {icon:'🔒',title:'Your security',text:'Your portal is protected by your email address and a 4-digit PIN set by your adviser. Always sign out when you have finished, especially on a shared device. If you need to change your PIN or have been locked out, contact your adviser.'},
+    {icon:'📞',title:'Getting help',text:'The portal is for viewing your information and submitting updates. For all advice, questions, or anything requiring a response, please contact Nexus IFA directly by phone or email. The portal does not send messages to your adviser.'},
+  ];
+  return '<div style="max-width:600px;margin:0 auto;padding:8px 0">'+
+    '<div style="font-size:18px;font-weight:700;color:var(--navy,#1B2A4A);margin-bottom:4px">Help &amp; Guide</div>'+
+    '<p style="font-size:12px;color:#666;margin-bottom:20px">How to use your client portal</p>'+
+    sections.map(s=>
+      '<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f0f0f0">'+
+        '<div style="font-size:22px;flex-shrink:0;padding-top:2px">'+s.icon+'</div>'+
+        '<div><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:4px">'+s.title+'</div>'+
+        '<p style="font-size:12px;color:#555;line-height:1.6;margin:0">'+s.text+'</p></div>'+
+      '</div>'
+    ).join('')+
+  '</div>';
 }
 
 function portalDashboard(c){
@@ -4788,7 +5108,7 @@ function portalFees(c){
   const fees=c.fees||[];
   const active=fees.filter(f=>f.status==='Active');
   const totalAnnual=active.reduce((s,f)=>s+(f.amount||0),0);
-  const ledger=db.fe.filter(f=>f.cid===c.id).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12);
+  const ledger=db.fe.filter(f=>f.cid===c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,12);
   return`<div class="portal-section">
     <div class="portal-card">
       <div class="portal-card-title">Fee summary</div>
@@ -4960,7 +5280,7 @@ function setPreviewTab(t){
   wrap.innerHTML=renderPreviewPortal(c);
 }
 function renderPreviewPortal(c){
-  const tabs=['dashboard','details','goals','fact find','documents','policies','reviews','fees'];
+  const tabs=['dashboard','details','goals','fact find','documents','policies','reviews','fees','help'];
   const tabsHtml='<div style="display:flex;border-bottom:1px solid var(--bdr);background:var(--bg2);overflow-x:auto;flex-shrink:0">'+
     tabs.map(t=>'<div style="padding:9px 14px;font-size:11px;cursor:pointer;white-space:nowrap;border-bottom:2px solid '+(_previewTab===t?'var(--green)':'transparent')+';color:'+(_previewTab===t?'var(--navy)':'var(--txt2)')+';font-weight:'+(_previewTab===t?'600':'400')+'" onclick="setPreviewTab(\''+t+'\')">'+t.charAt(0).toUpperCase()+t.slice(1)+'</div>'
     ).join('')+
@@ -4968,7 +5288,7 @@ function renderPreviewPortal(c){
   const renderFns={
     dashboard:portalDashboard,details:portalDetails,'fact find':portalFactFind,
     goals:portalGoals,documents:portalDocuments,policies:portalPolicies,
-    reviews:portalReviews,fees:portalFees
+    reviews:portalReviews,fees:portalFees,help:portalHelp
   };
   const fn=renderFns[_previewTab];
   const content=fn?fn(c):'';
