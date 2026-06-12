@@ -191,6 +191,14 @@ tbody tr{cursor:pointer}
   .view-as-bar{flex-wrap:wrap;font-size:10px;padding:5px 10px}
 }
 /* Mobile bottom nav — hidden by default, shown on mobile */
+
+.mob-cards{display:none}
+.desk-table{display:block}
+@media(max-width:540px){
+  .mob-cards{display:block}
+  .desk-table{display:none}
+}
+
 .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid rgba(255,255,255,.1);z-index:200;height:56px;align-items:stretch}
 .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.55);font-size:9px;font-weight:500;gap:2px;padding:4px 0;border:none;background:none;font-family:var(--font-ui);transition:color .15s;text-transform:uppercase;letter-spacing:.03em}
 .mobile-nav-item:active{background:rgba(255,255,255,.08)}
@@ -567,7 +575,6 @@ let db={cl:[],ld:[],rv:[],hh:[],tk:[],fl:[],fe:[],nl:[],au:[],ni:1,li:1,ri:1,hi:
 let vw='clients',sid=null,ct='overview',cY,cM;
 const now=new Date();
 
-function mob(){return window.innerWidth<=540;}
 cY=now.getFullYear();cM=now.getMonth();
 const FM=['James','William','Robert','Thomas','David','Michael','Andrew','Richard','Peter','Christopher','Jonathan','Matthew','Oliver','Edward','Charles','George','Henry','Alexander','Daniel','Joseph','Samuel','Benjamin','Nicholas','Patrick','Simon'];
 const FF=['Sarah','Emma','Elizabeth','Helen','Claire','Rachel','Laura','Catherine','Jennifer','Susan','Margaret','Anne','Patricia','Amanda','Rebecca','Victoria','Charlotte','Sophie','Hannah','Alice','Olivia','Louise','Karen','Nicola','Julia'];
@@ -1078,7 +1085,7 @@ function pgL(){
     <div class="sc"><div class="sl">Proceeding</div><div class="sv" style="color:var(--navy)">${db.ld.filter(l=>l.status==='Proceeding').length}</div></div>
     <div class="sc"><div class="sl">Not proceeding</div><div class="sv" style="color:var(--txt2)">${db.ld.filter(l=>l.status==='Not Proceeding').length}</div></div>
   </div>
-  ${mob()?
+  '<div class="mob-cards">'+(
   (lds.length===0?'<div class="empty">No leads found.</div>':lds.map(l=>
     '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'ld\','+l.id+')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
@@ -1096,7 +1103,7 @@ function pgL(){
         (l.notes?'<div style="grid-column:1/-1;color:var(--txt2);font-size:10px">'+l.notes+'</div>':'')+
       '</div>'+
     '</div>').join(''))
-  :
+  )+'</div>'+'<div class="desk-table">'+(
   '<div class="tw"><table>'+
   '<thead><tr>'+sh('ld','name','Name','22%')+sh('ld','source','Source','14%')+sh('ld','adviser','Adviser','13%')+sh('ld','status','Status','12%')+'<th style="width:22%">Notes</th>'+sh('ld','created','Created','10%')+'<th style="width:6%"></th></tr></thead>'+
   '<tbody>'+(lds.length===0?'<tr><td colspan="7"><div class="empty">No leads found.</div></td></tr>':lds.map(l=>
@@ -1109,7 +1116,7 @@ function pgL(){
       '<td>'+fd(l.created)+'</td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'ld\','+l.id+')">View</button></td>'+
     '</tr>').join(''))+
-  '</tbody></table></div>'}`;
+  '</tbody></table></div>')+'</div>'`;
 }
 function pgLD(){
   const l=db.ld.find(x=>x.id===sid);if(!l)return'<div class="empty">Not found.</div>';
@@ -1204,7 +1211,7 @@ function pgC(){
     <div class="sc"><div class="sl">Annual fees</div><div class="sv" style="font-size:14px">${fm(tF)}</div></div>
     <div class="sc"><div class="sl">Showing</div><div class="sv">${cl.length}</div></div>
   </div>
-  ${mob()?cl.map(c=>{
+    '<div class="mob-cards">'+(cl.map(c=>{
     const aum=(c.pols||[]).reduce((s,p)=>s+(p.value||0),0);
     const af2=(c.fees||[]).filter(f=>f.status==='Active').reduce((s,f)=>s+(f.amount||0),0);
     const ssc={'Active':'bg','Prospect':'ba','Restricted Processing':'br','Deceased':'bk'}[c.svcStatus]||'bk';
@@ -1223,7 +1230,7 @@ function pgC(){
         '<div><span style="color:var(--txt2)">Risk </span><strong>'+c.risk+'/10</strong></div>'+
         '<div><span style="color:var(--txt2)">KYC </span><span class="badge '+(c.kyc?'bg':'ba')+'" style="font-size:9px">'+(c.kyc?'OK':'Pending')+'</span></div>'+
       '</div>'+
-    '</div>';}).join(''):
+    '</div>';}).join(''))+'</div>'+'<div class="desk-table">'+(
   '<div class="tw"><table>'+
   '<thead><tr>'+sh('cl','name','Client','20%')+sh('cl','age','Age','5%')+sh('cl','adviser','Adviser','12%')+sh('cl','risk','Risk','9%')+sh('cl','aum','AUM','10%')+'<th style="width:5%">Pols</th>'+sh('cl','fee','Fee/yr','9%')+sh('cl','svcStatus','Status','10%')+'<th style="width:7%">KYC</th><th style="width:5%"></th></tr></thead>'+
   '<tbody>'+cl.map(c=>{
@@ -1240,7 +1247,7 @@ function pgC(){
       '<td><span class="badge '+(c.kyc?'bg':'ba')+'">'+(c.kyc?'OK':'Pending')+'</span></td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+c.id+')">View</button></td>'+
     '</tr>';}).join('')+
-  '</tbody></table></div>'}`;
+  '</tbody></table></div>')+'</div>'`;
 }
 function pgCD(){
   const c=db.cl.find(x=>x.id===sid);if(!c)return'<div class="empty">Not found.</div>';
@@ -1809,8 +1816,7 @@ function pgRevs(rvs){
   const adf=afl();let filtered=adf?rvs.filter(rv=>rv.adviser===adf):rvs;
   filtered=sorted(filtered,'rv',(x,k)=>({aum:x.aum||0}[k]||x[k]));
   if(!filtered.length)return'<div class="empty">No reviews found.</div>';
-  return mob()?
-  filtered.map(rv=>
+  return '<div class="mob-cards">'+filtered.map(rv=>
     '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="oRev('+rv.id+')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
         '<div class="av" style="flex-shrink:0">'+ini(rv.cn)+'</div>'+
@@ -1828,8 +1834,8 @@ function pgRevs(rvs){
         '<div><span style="color:var(--txt2)">AUM </span>'+fm(rv.aum)+'</div>'+
       '</div>'+
     '</div>'
-  ).join(''):
-  '<div class="tw"><table>'+
+  ).join('')+'</div>'+
+  '<div class="desk-table"><div class="tw"><table>'+
   '<thead><tr>'+sh('rv','cn','Client','20%')+sh('rv','date','Date','11%')+'<th style="width:7%">Time</th>'+sh('rv','type','Type','14%')+sh('rv','adviser','Adviser','13%')+sh('rv','aum','AUM','9%')+sh('rv','status','Status','9%')+sh('rv','loc','Location','9%')+'<th style="width:5%"></th></tr></thead>'+
   '<tbody>'+filtered.map(rv=>
     '<tr onclick="oRev('+rv.id+')">'+
@@ -1841,7 +1847,7 @@ function pgRevs(rvs){
       '<td style="font-size:10px;color:var(--txt2)">'+(rv.loc||'--')+'</td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();oRev('+rv.id+')">Open</button></td>'+
     '</tr>').join('')+
-  '</tbody></table></div>';
+  '</tbody></table></div></div>';
 }
 function oSched(cid,ds){
   const opts=db.cl.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${fnd(c)}</option>`).join('');
@@ -1915,7 +1921,7 @@ function pgPols(){
     <div class="sc"><div class="sl">Total value</div><div class="sv" style="font-size:14px">${fm(tv)}</div></div>
     <div class="sc"><div class="sl">Monthly contribs</div><div class="sv" style="font-size:13px">${fm(all.reduce((s,p)=>s+(p.monthlyContrib||0),0))}</div></div>
   </div>
-  ${mob()?all.slice(0,120).map(p=>
+  '<div class="mob-cards">'+(all.slice(0,120).map(p=>
     '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'cd\','+p.cid+')">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
         '<div style="min-width:0">'+
@@ -1930,7 +1936,7 @@ function pgPols(){
         '<div><span style="color:var(--txt2)">Plan no. </span><span style="font-family:var(--mono);font-size:10px">'+p.planNumber+'</span></div>'+
       '</div>'+
     '</div>').join('')
-  :
+  )+'</div>'+'<div class="desk-table">'+(
   '<div class="tw"><table>'+
   '<thead><tr>'+sh('pols','cn','Client','18%')+sh('pols','type','Type','13%')+sh('pols','provider','Provider','12%')+'<th style="width:10%">Plan no.</th>'+sh('pols','value','Value','9%')+sh('pols','monthlyContrib','Monthly','8%')+sh('pols','planStatus','Status','10%')+'<th style="width:12%">Beneficiaries</th><th style="width:5%"></th></tr></thead>'+
   '<tbody>'+all.slice(0,120).map(p=>
@@ -1942,7 +1948,7 @@ function pgPols(){
       '<td class="ellipsis" style="font-size:10px;color:var(--txt2)">'+(p.beneficiaries||'--')+'</td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+p.cid+')">Go</button></td>'+
     '</tr>').join('')+
-  '</tbody></table></div>'}`;
+  '</tbody></table></div>')+'</div>'`;
 }
 function pgFees(){
   const adf=afl();
@@ -1956,7 +1962,7 @@ function pgFees(){
     <div class="sc"><div class="sl">Active</div><div class="sv">${all.filter(f=>f.status==='Active').length}</div></div>
     <div class="sc"><div class="sl">Avg per client</div><div class="sv" style="font-size:14px">${nc>0?fm(Math.round(ta/nc)):'--'}</div></div>
   </div>
-  ${mob()?all.map(f=>
+  '<div class="mob-cards">'+(all.map(f=>
     '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'cd\','+f.cid+')">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
         '<div style="min-width:0">'+
@@ -1971,7 +1977,7 @@ function pgFees(){
         (f.percent?'<div><span style="color:var(--txt2)">Rate </span>'+f.percent+'%</div>':'')+
       '</div>'+
     '</div>').join('')
-  :
+  )+'</div>'+'<div class="desk-table">'+(
   '<div class="tw"><table>'+
   '<thead><tr>'+sh('fees','cn','Client','20%')+sh('fees','type','Type','11%')+'<th style="width:22%">Description</th><th style="width:7%">%</th>'+sh('fees','amount','Amount','10%')+sh('fees','frequency','Frequency','11%')+sh('fees','status','Status','8%')+'<th style="width:5%"></th></tr></thead>'+
   '<tbody>'+all.map(f=>
@@ -1981,7 +1987,7 @@ function pgFees(){
       '<td><span class="badge '+(f.status==='Active'?'bg':'ba')+'">'+f.status+'</span></td>'+
       '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+f.cid+')">Go</button></td>'+
     '</tr>').join('')+
-  '</tbody></table></div>'}`;
+  '</tbody></table></div>')+'</div>'`;
 }
 function pgDashboard(){
   const adf=afl();
@@ -2136,7 +2142,7 @@ function pgTasks(){
     <div class="sc"><div class="sl">Due this week</div><div class="sv" style="${due7>0?'color:var(--amber-txt)':''}">${due7}</div></div>
   </div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-p btn-sm" onclick="oTask()">+ New task</button></div>
-  ${mob()?tasks.map(t=>{
+  '<div class="mob-cards">'+(tasks.map(t=>{
     const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
     const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
     return'<div class="card" style="margin-bottom:8px;'+(t.done?'opacity:.55':'')+'">'+
@@ -2153,7 +2159,7 @@ function pgTasks(){
         '</div>'+
       '</div>'+
     '</div>';}).join('')
-  :
+  )+'</div>'+'<div class="desk-table">'+(
   '<div class="tw"><table>'+
   '<thead><tr><th style="width:4%"></th>'+sh('tk','cn','Client','20%')+sh('tk','title','Task','24%')+sh('tk','category','Category','11%')+sh('tk','priority','Priority','9%')+sh('tk','adviser','Adviser','12%')+sh('tk','due','Due','10%')+'<th style="width:7%"></th></tr></thead>'+
   '<tbody>'+tasks.map(t=>{
@@ -2169,7 +2175,7 @@ function pgTasks(){
       '<td style="font-size:11px;'+(isOv?'color:var(--red-txt);font-weight:500':'color:var(--txt2)')+'">'+fd(t.due)+'</td>'+
       '<td><button class="btn btn-sm" onclick="oTask('+t.id+')">Edit</button></td>'+
     '</tr>';}).join('')+
-  '</tbody></table></div>'}`;
+  '</tbody></table></div>')+'</div>'`;
 }
 function tTasks(client){
   const tasks=db.tk.filter(t=>t.cid===client.id).sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;return a.due.localeCompare(b.due);});
