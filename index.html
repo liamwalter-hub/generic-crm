@@ -110,6 +110,13 @@ tbody tr{cursor:pointer}
 .cal-ev{font-size:8px;padding:1px 3px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:500}
 .ev-s{background:var(--blue-bg);color:var(--blue-txt)}.ev-c{background:var(--green-bg);color:var(--green-txt)}
 .ev-o{background:var(--red-bg);color:var(--red-txt)}.ev-x{background:var(--gray-bg);color:var(--gray-txt)}
+#cal-pop{position:fixed;z-index:900;background:var(--bg);border:1px solid var(--bdr2);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.18);width:300px;display:none;overflow:hidden}
+#cal-pop.open{display:block}
+.cal-pop-head{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.cal-pop-body{padding:10px 12px;max-height:340px;overflow-y:auto}
+.cal-pop-foot{padding:8px 12px;border-top:1px solid var(--bdr2);background:var(--bg2)}
+.cal-pop-rv{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bdr)}
+.cal-pop-rv:last-child{border-bottom:none}
 .chk-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--bdr)}
 .chk-item:last-child{border-bottom:none}
 .chk-item input[type=checkbox]{margin-top:1px;cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--green)}
@@ -336,6 +343,17 @@ tbody tr{cursor:pointer}
   <div id="viewas-bar" style="display:none" class="view-as-bar"></div>
   <div class="content" id="content"><div class="empty">Loading...</div></div>
 </div>
+</div>
+<!-- Calendar day popout -->
+<div id="cal-pop">
+  <div class="cal-pop-head">
+    <span id="cal-pop-title" style="font-size:13px;font-weight:600"></span>
+    <button onclick="closeCalPop()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;padding:0;line-height:1">&times;</button>
+  </div>
+  <div class="cal-pop-body" id="cal-pop-body"></div>
+  <div class="cal-pop-foot">
+    <button class="btn btn-p btn-sm" style="width:100%" id="cal-pop-new">+ New review on this date</button>
+  </div>
 </div>
 <!-- Mobile bottom navigation -->
 <div class="mobile-nav" id="mobile-nav">
@@ -641,7 +659,8 @@ function showM(title,body,save,footer,size){
   else if(save){sf.innerHTML='<button class="btn" onclick="closeM()">Cancel</button><button class="btn btn-p" onclick="'+save+'">Save</button>';}
   else{sf.innerHTML='<button class="btn btn-p" onclick="closeM()">Close</button>';}
   m.style.display='flex';
-  if(size==='lg')m.querySelector('.modal-box').style.maxWidth='700px';
+  if(size==='xl')m.querySelector('.modal-box').style.maxWidth='900px';
+  else if(size==='lg')m.querySelector('.modal-box').style.maxWidth='700px';
   else m.querySelector('.modal-box').style.maxWidth='480px';
 }
 function closeM(){const m=document.getElementById('modal');if(m)m.style.display='none';}
@@ -945,15 +964,17 @@ function pgHelp(){
     fees:{id:'fees',label:'Fees & fee ledger',icon:'£'},
     approvals:{id:'approvals',label:'Pending approvals',icon:'📬'},
     export:{id:'export',label:'Export & backup',icon:'⬇️'},
+    import:{id:'import',label:'Bulk import',icon:'⬆️'},
+    letter_gen:{id:'letter_gen',label:'Review letter generator',icon:'✉️'},
     audit:{id:'audit',label:'Audit trail',icon:'🔒'},
     portal:{id:'portal',label:'Client portal',icon:'🌐'},
   };
 
   // Role → which topics to show, in order
   const roleTopics={
-    management:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','approvals','export','audit','portal'],
-    adviser:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','portal'],
-    administrator:['login','dashboard','clients','cd_overview','cd_personal','cd_comms','cd_docs','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','households','leads','approvals','export'],
+    management:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','approvals','export','import','letter_gen','audit','portal'],
+    adviser:['login','dashboard','clients','cd_overview','cd_personal','cd_ff','cd_goals','cd_cashflow','cd_comms','cd_docs','cd_risk','cd_policies','cd_fees','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','sr_task','households','leads','policies','fees','letter_gen','portal'],
+    administrator:['login','dashboard','clients','cd_overview','cd_personal','cd_comms','cd_docs','cd_cases','cd_reviews','cd_tasks','cd_compliance','reviews','tasks','households','leads','approvals','export','import'],
     paraplanner:['login','dashboard','clients','cd_overview','cd_ff','cd_risk','cd_goals','cd_cashflow','cd_policies','cd_cases','cd_comms','cd_compliance','reviews','tasks','sr_task'],
   };
 
@@ -962,7 +983,7 @@ function pgHelp(){
     dashboard:'dashboard',clients:'clients',leads:'leads',revs:'reviews',cal:'reviews',
     upcoming:'reviews',overdue:'reviews',tasks:'tasks',households:'households',
     policies:'policies',fees:'fees',flows:'fees',feeledger:'fees',
-    audit:'audit',approvals:'approvals',export:'export',
+    audit:'audit',approvals:'approvals',export:'export',import:'import',
     'cd:overview':'cd_overview','cd:personal':'cd_personal','cd:fact find':'cd_ff',
     'cd:goals':'cd_goals','cd:cashflow':'cd_cashflow','cd:comms':'cd_comms',
     'cd:documents':'cd_docs','cd:risk profile':'cd_risk','cd:policies':'cd_policies',
@@ -983,78 +1004,85 @@ function pgHelp(){
     const items={
       login:`<h3>Logging in</h3>
 <p>Open the Nexus IFA URL in your browser. Select your account from the login screen and enter your 4-digit PIN using the keypad.</p>
-<div class="help-tip">⚠️ Change your default PIN (1234) before going live. Go to your user settings or ask your system administrator.</div>
+<div class="help-tip">⚠️ Change your default PIN (1234) before going live. Ask your system administrator to update it.</div>
+<h3>User roles</h3>
+<p>There are four roles: <strong>Management</strong> (full access), <strong>Adviser</strong> (own clients only), <strong>Administrator</strong> (all clients, admin task queue), and <strong>Paraplanner</strong> (all clients, paraplanner task queue). The login screen shows each user&#39;s role beneath their name.</p>
 <h3>Switching accounts</h3>
-<p>Each user has their own PIN. Simply click a different name on the login screen to switch accounts. Data is shared — changes made under one account are visible to all users on the same device.</p>`,
+<p>Click a different name on the login screen to switch accounts. Data is shared — all changes are visible to all users on the same device.</p>`,
 
       dashboard:`<h3>Your Dashboard</h3>
 <p>The Dashboard is your starting point every time you log in. It gives you an at-a-glance view of the practice.</p>
 <h3>KPI Strip</h3>
 <p>The four headline numbers at the top (Total clients, AUM, Annual fees, Open cases) are clickable — tap any one to navigate to that section.</p>
 <h3>Action cards</h3>
-<p><strong>Red</strong> — overdue items need immediate attention. <strong>Amber</strong> — upcoming deadlines or items awaiting action. <strong>Green</strong> — all clear.</p>
+<p><strong>Red</strong> — overdue items need immediate attention. <strong>Amber</strong> — upcoming deadlines or items awaiting action. <strong>Green</strong> — all clear. Each card is clickable and takes you directly to the relevant section.</p>
 <h3>Reviews this week</h3>
 <p>All reviews scheduled in the next 7 days. Click a client name to go straight to their record.</p>
-${isMgmt?'<h3>Practice breakdown</h3><p>The table at the bottom shows each adviser&#39;s client count, AUM, and fees. Click any row to filter the system to that adviser&#39;s data.</p>':''}`,
+<h3>Overdue tasks</h3>
+<p>Tasks that have passed their due date. Click any client name to open their record.</p>
+${isMgmt?'<h3>Practice breakdown</h3><p>The table at the bottom shows each adviser&#39;s client count, AUM, and annual fees. Click any row to filter the system to that adviser&#39;s data.</p><h3>Risk distribution</h3><p>A bar chart breakdown of clients by risk profile band.</p>':''}`,
 
       clients:`<h3>All clients</h3>
 <p>The client list shows ${isMgmt||isAdmin||isPara?'all clients across the practice':'your clients'}. Use the search bar to find clients by name, email, or phone number. Click any column header to sort.</p>
 <h3>Adding a client</h3>
 <p>Click <strong>+ New client</strong> in the topbar. Fill in the details and click Save. The client is created and you land on their profile.</p>
-${isMgmt?'<h3>Adviser filter</h3><p>Use the All advisers dropdown in the topbar to filter to a single adviser. Or use the View as: dropdown in the top-right corner.</p>':''}`,
+${isMgmt?'<h3>Adviser filter</h3><p>Use the <strong>All advisers</strong> dropdown in the topbar to filter the list to a single adviser. Use the <strong>View as:</strong> dropdown in the top-right corner to filter the entire system to one adviser&#39;s perspective.</p>':''}`,
 
       cd_overview:`<h3>Client overview</h3>
-<p>The Overview tab is the starting point for any client record. It shows a summary of their AUM, annual fees, open cases, recent service cases, goals snapshot, and compliance status.</p>
-<h3>Navigating the profile</h3>
-<p>Use the tabs below the client name to move between sections. The active tab is highlighted. Scroll the tab bar sideways on mobile.</p>
-<h3>Client view preview</h3>
-<p>Click the <strong>👁 Client view</strong> button in the profile header to preview exactly what the client sees in their portal — useful before setting up portal access.</p>`,
+<p>The Overview tab is the starting point for any client record. It shows a summary of AUM, annual fees, open cases, recent service cases, goals snapshot, and compliance status.</p>
+<h3>Header buttons</h3>
+<p>The client profile header contains several action buttons:</p>
+<p><strong>Export PDF</strong> — generates a printable client summary. <strong>Review agenda</strong> — creates a one-page pre-meeting brief. <strong>✉ Review letter</strong> — opens the annual review letter generator. <strong>? Help</strong> — opens help for the current tab. <strong>👁 Client view</strong> — previews the client portal as that client sees it.</p>
+<h3>Navigating tabs</h3>
+<p>Use the tab bar below the client name to move between the 16 profile sections. Scroll the tab bar sideways on mobile.</p>`,
 
       cd_personal:`<h3>Personal details</h3>
 <p>Name, title, date of birth, NI number, contact details, address, marital status, employment, and health notes are all stored here.</p>
 <h3>Client portal PIN</h3>
-<p>Scroll to the <em>Client portal access</em> section. Set a 4-digit PIN to give the client access to their portal. Once set, they can log in using their email address and this PIN.</p>`,
+<p>Scroll to the <em>Client portal access</em> section. Set a 4-digit PIN to give the client access to their portal. Once set, they log in using their email address and this PIN.</p>`,
 
       cd_ff:`<h3>Fact find</h3>
 <p>The fact find holds the core financial data that underpins advice: net monthly income, partner income, total monthly expenditure, mortgage/rent, savings balance, property value, outstanding debts, pension value, and ISA/investment value.</p>
-<p>It also records planning preferences: risk timeframe, goals summary, emergency fund target, dependants, state pension inclusion, and CFD date.</p>
+<p>It also records planning preferences: risk timeframe, goals summary, emergency fund target, dependants, state pension inclusion, and cash flow drawdown start date.</p>
 ${isPara?'<div class="help-tip">💡 Review this tab carefully when working on a suitability report — income and expenditure underpin affordability and the ATR assessment.</div>':''}`,
 
       cd_goals:`<h3>Financial goals</h3>
-<p>Goals are linked to the client&#39;s overall plan. Each goal has a description, category, timeframe, priority, and status.</p>
+<p>Goals are linked to the client&#39;s overall plan. Each goal has a description, category, timeframe, priority, and status (Active, On hold, Achieved).</p>
 <h3>Adding a goal</h3>
-<p>Click <strong>+ Add goal</strong>. Fill in the description and details. Goals can be linked to specific policies or projections.</p>
-<p>Clients can also submit new goals via their portal — these arrive as pending approvals.</p>`,
+<p>Click <strong>+ Add goal</strong>. Fill in the description and details. Save.</p>
+<p>Clients can also submit new goals via their portal — these arrive as pending approvals for the adviser to review before being applied.</p>`,
 
       cd_cashflow:`<h3>Cash flow modelling</h3>
-<p>Run retirement projections based on the client&#39;s fact find data. Three scenarios are available: Base, Optimistic, and Pessimistic.</p>
-<p>A <strong>2008-style stress test</strong> applies historical crash returns to show portfolio resilience.</p>
-<h3>Scenarios</h3>
-<p>Switch between scenarios using the tabs above the chart. Each uses different growth and inflation assumptions.</p>
+<p>Run retirement projections based on the client&#39;s fact find data. Three scenarios are available: Base, Optimistic, and Pessimistic — switch between them using the tabs above the chart.</p>
+<p>A <strong>2008-style stress test</strong> applies historical crash-period returns to show portfolio resilience under adverse conditions.</p>
 <h3>Custom events</h3>
-<p>Add one-off events (inheritance, property purchase, school fees) to the timeline via the Transactions tab.</p>`,
+<p>Add one-off events (inheritance, property purchase, school fees) to the timeline via the Transactions tab.</p>
+<h3>Household mode</h3>
+<p>If the client is part of a household, you can run joint projections combining both partners&#39; data.</p>`,
 
       cd_comms:`<h3>Communications log</h3>
-<p>Every phone call, email, meeting, letter, or text message with the client should be logged here. This creates an audit trail of all client contact.</p>
+<p>Every phone call, email, meeting, letter, or text message with the client should be logged here. This creates a full audit trail of all client contact.</p>
 <h3>Logging a communication</h3>
-<p>Click <strong>+ Log communication</strong>. Select type, date, enter notes, and save. The entry appears in the log in reverse date order.</p>`,
+<p>Click <strong>+ Log communication</strong>. Select type, date, enter notes, and save. Entries appear in reverse date order.</p>`,
 
       cd_docs:`<h3>Document management</h3>
-<p>The documents tab tracks every document the practice holds or has requested from the client.</p>
+<p>Tracks every document the practice holds or has requested from the client.</p>
 <p>Status options: <strong>Received</strong>, <strong>Outstanding</strong> (requested, not yet received), <strong>Not required</strong>, <strong>Expired</strong>.</p>
-<p>Set received dates and expiry dates to track document currency. Outstanding documents appear as compliance warnings.</p>`,
+<p>Set received dates and expiry dates. Outstanding documents appear as compliance warnings on the overview.</p>`,
 
       cd_risk:`<h3>Risk profile</h3>
 <p>Records the client&#39;s Attitude to Risk (ATR) score (1–10), capacity for loss notes, investment experience, and any conflict between ATR and capacity for loss.</p>
 <h3>Risk categories</h3>
 <p>1–3: Cautious. 4–6: Moderate. 7–8: Moderately adventurous. 9–10: Adventurous.</p>
-${isPara?'<div class="help-tip">💡 The risk profile is auto-filled into suitability report tasks when the adviser selects a client. Always verify it reflects the most recent assessment before drafting.</div>':''}`,
+${isPara?'<div class="help-tip">💡 The risk profile is auto-filled into suitability report tasks when an adviser selects a client. Always verify it reflects the most recent assessment before drafting.</div>':''}`,
 
       cd_policies:`<h3>Policies & investments</h3>
 <p>All policies held through the practice are listed here — pensions, SIPPs, ISAs, GIAs, bonds, protection, and drawdown plans.</p>
-<p>Each policy shows type, provider, plan number, start date, current value, monthly contribution, status, and investment holdings.</p>
+<p>Each policy shows type, provider, plan number, start date, current value, monthly contribution, status, and investment holdings within the policy.</p>
 <h3>Adding a policy</h3>
-<p>Click <strong>+ Add policy</strong>. Enter the policy details and investment allocations. Save.</p>`,
+<p>Click <strong>+ Add policy</strong>. Enter the details and investment allocations. Save.</p>
+<h3>Bulk updating values</h3>
+<p>To update multiple policy values at once, use the <strong>Bulk import</strong> section — download the policy valuations template, fill in the new values, and upload it.</p>`,
 
       cd_fees:`<h3>Fee arrangements</h3>
 <p>The Fees tab shows all ongoing and one-off fee arrangements for the client — adviser charges, platform fees, and any other agreed fees.</p>
@@ -1065,95 +1093,139 @@ ${isPara?'<div class="help-tip">💡 The risk profile is auto-filled into suitab
 <p>Cases track new and existing business from start to completion. Each case has a category (New Client, Top-up, Withdrawal, Fund Switch, etc.), advice type, status, and compliance flags.</p>
 <h3>Compliance flags</h3>
 <p>Each case tracks: AML checked, suitability report issued, pre-sale check done, post-sale check done, and LOA received.</p>
-<h3>SR cases from tasks</h3>
-<p>When an adviser creates a Suitability Report task, a service case is automatically created and linked to it. The case will show the adviser&#39;s brief, risk profile, recommended product, and documents required — everything the paraplanner needs.</p>
-${isPara?'<div class="help-tip">💡 Cases created from SR tasks show a "📝 SR task assigned" badge. Use the Edit button to update status as work progresses.</div>':''}`,
+<h3>Cases from suitability report tasks</h3>
+<p>When an adviser creates a Suitability Report task, a service case is automatically created and linked. The case displays the adviser&#39;s brief, risk profile, recommended product, approximate investment, provider, documents required, and target completion date.</p>
+${isPara?'<div class="help-tip">💡 Cases created from SR tasks show a "📝 SR task assigned" badge. Click Edit to update the case status as you progress through the work.</div>':''}`,
 
       cd_reviews:`<h3>Review history</h3>
-<p>All past and scheduled reviews are listed here with date, type, location, status, checklist completion, and outcome notes.</p>
+<p>All past and scheduled reviews for this client are listed here with date, type, location, status, checklist completion, and outcome notes.</p>
 <h3>Scheduling a review</h3>
 <p>Click <strong>+ Schedule review</strong>. Set date, time, review type, location, and next review date. Save.</p>
 <h3>Review checklist</h3>
-<p>Each review has a built-in checklist. Tick items off during the meeting. The progress indicator updates live.</p>`,
+<p>Each review has a built-in checklist covering standard review items. Tick items off during the meeting — the progress bar updates live.</p>
+<h3>Review letters</h3>
+<p>If an annual review letter has been saved against a review, the card shows a green <strong>📄 letter filed</strong> badge alongside the status, plus a <strong>View letter</strong> button. Clicking it reopens the letter in the editor — fully editable so you can revise and re-save or re-export. The card footer also shows when the letter was saved and by whom.</p>
+<p>The same <strong>View letter</strong> button appears in the footer of the review detail modal (opened via the Open button).</p>
+<div class="help-tip">💡 To file a letter against a review, generate it from the ✉ Review letter button in the client profile header, edit as needed, then use the Save to review panel at the bottom of the editor.</div>`,
 
       cd_tasks:`<h3>Client tasks</h3>
-<p>This tab shows all tasks linked to this specific client. Create tasks here to keep them organised by client rather than hunting through the global task list.</p>
-<p>Tasks assigned to the Paraplanner or Administrator will appear in their respective queues in the global Tasks view.</p>
-<p>If a task is linked to a service case (e.g. a suitability report task), a <strong>📝 View case</strong> link appears — click it to jump straight to the linked case.</p>`,
+<p>All tasks linked to this specific client. Create tasks here to keep them organised against a client rather than using the global task list.</p>
+<p>Tasks assigned to the Paraplanner or Administrator queue appear in their respective views in the global Tasks section.</p>
+<p>If a task is linked to a service case (e.g. a suitability report task), a <strong>📝 View case</strong> badge appears — click it to jump straight to the linked service case.</p>`,
 
       cd_compliance:`<h3>Compliance summary</h3>
 <p>A single-page view of the client&#39;s compliance status: KYC verified date, AML status, suitability file status, vulnerable client flag, and service status.</p>
-<p>Outstanding items are highlighted in amber or red.</p>`,
+<p>Outstanding compliance items are highlighted in amber or red.</p>`,
 
-      reviews:`<h3>Reviews</h3>
+      reviews:`<h3>Reviews & calendar</h3>
 <p>Four views are available from the sidebar: Calendar, All reviews, Upcoming, and Overdue.</p>
-<h3>Calendar view</h3>
-<p>Shows reviews plotted on a month calendar. Navigate between months using the arrows. Click a review to open it.</p>
+<h3>Calendar — clicking a date</h3>
+<p>Click any date on the calendar to open a <strong>day popout</strong> anchored to that cell. If reviews are already booked on that date, they are shown as compact cards with client name, time, review type, location, adviser, checklist progress, and an <strong>Open</strong> button to go straight into the review. A <strong>+ New review on this date</strong> button is always shown at the bottom of the popout.</p>
+<p>If the date has no bookings the scheduling form opens directly. Close the popout by clicking outside it, pressing Escape, or navigating away.</p>
 <h3>Scheduling a review</h3>
 <p>Click <strong>+ Schedule review</strong> from any reviews view or from a client&#39;s Reviews tab. Select client, date, time, type, and location.</p>
 <h3>Completing a review</h3>
-<p>Open the review, tick off the checklist, set status to Completed, enter outcome notes, and set the next review date.</p>`,
+<p>Open the review, tick off the checklist items, set status to Completed, enter outcome notes, and set the next review date.</p>`,
 
       tasks:`<h3>Tasks</h3>
-<p>The Tasks view shows all tasks across ${isMgmt||isAdmin?'the practice':'your clients'}. Use the role filter tabs at the top to switch between All, Adviser, Administrator, and Paraplanner queues.</p>
+<p>The Tasks view shows all tasks across ${isMgmt||isAdmin?'the practice':'your clients'}. Use the role filter tabs at the top — <strong>All, Adviser, Administrator, Paraplanner</strong> — to switch between queues.</p>
 ${isAdmin?'<div class="help-tip">💡 Your view defaults to the Administrator queue — tasks assigned to you by advisers.</div>':''}
 ${isPara?'<div class="help-tip">💡 Your view defaults to the Paraplanner queue — tasks assigned to you by advisers.</div>':''}
+<h3>Task categories</h3>
+<p>Available categories include: General admin, Client communication, Review prep, Compliance, Provider chase, New business, <strong>Suitability report</strong>, <strong>Review pack</strong>, <strong>Paraplan request</strong>, and Other. Selecting Suitability report expands the form with additional case fields.</p>
 <h3>Creating a task</h3>
-<p>Click <strong>+ New task</strong>. Select client, title, category, priority, due date, adviser, and the role queue to assign it to (Adviser, Administrator, or Paraplanner).</p>
+<p>Click <strong>+ New task</strong>. Select client, title, category, priority, due date, adviser, and the role queue to assign it to.</p>
 <h3>Completing a task</h3>
-<p>Tick the checkbox next to a task to mark it done. Or click Edit to update its details.</p>`,
+<p>Tick the checkbox next to a task to mark it done, or click Edit to update details.</p>`,
 
       sr_task:`<h3>Suitability report tasks</h3>
-<p>When you create a task and select <strong>Suitability report</strong> as the category, an additional section appears in the task form.</p>
-<h3>What to fill in</h3>
-<p><strong>Case category</strong> — the type of business (New Client, Existing Client, Top-up, etc.). <strong>Advice type</strong> — the product being recommended. <strong>Risk profile</strong> — auto-filled from the client&#39;s fact find. <strong>Recommended product/wrapper</strong> — e.g. SIPP, S&S ISA, Bond. <strong>Approximate investment</strong> — the investment amount. <strong>Provider</strong> — the intended platform or provider. <strong>Basis of advice</strong> — your brief for the paraplanner. <strong>Documents required</strong> — what you still need from the client.</p>
+<p>When creating a task with category <strong>Suitability report</strong>, a second section expands in the form with service case fields.</p>
+<h3>What to complete</h3>
+<p><strong>Case category</strong> — type of business. <strong>Advice type</strong> — the recommended product. <strong>Risk profile</strong> — auto-filled from the client&#39;s fact find when a client is selected. <strong>Recommended product/wrapper</strong> — e.g. SIPP, S&S ISA. <strong>Approximate investment</strong>. <strong>Provider</strong>. <strong>Basis of advice</strong> — your brief for the paraplanner. <strong>Documents required</strong> — what is still needed from the client. <strong>Target completion date</strong>.</p>
 <h3>What happens on save</h3>
-<p>A service case is automatically created on the client&#39;s record, pre-populated with all the details you entered. The task and case are linked. The paraplanner sees your full brief in their task queue.</p>
-${isPara?'<div class="help-tip">💡 When you receive an SR task, click the client name to go to their profile, then navigate to Service Cases to see the full linked case with the adviser&#39;s brief.</div>':''}`,
+<p>A service case is automatically created on the client&#39;s record, pre-populated with all the details entered. The task and case are permanently linked — the paraplanner sees the full brief in their task queue, and the case appears on the client&#39;s Service Cases tab with an "SR task assigned" badge.</p>
+<h3>Editing later</h3>
+<p>If you reopen and edit the task, the linked service case updates automatically rather than creating a duplicate.</p>
+${isPara?'<div class="help-tip">💡 Click the client name on the task to go to their profile, then open the Service Cases tab to see the full linked case and adviser brief.</div>':''}`,
 
       households:`<h3>Households</h3>
-<p>Households link related clients (e.g. couples) for combined reporting and joint cash flow projections.</p>
+<p>Link related clients (e.g. couples) into a household for combined AUM reporting and joint cash flow projections.</p>
 <h3>Creating a household</h3>
-<p>Go to Households in the sidebar. Click <strong>+ New household</strong>. Select the primary client and partner. Assign household roles (Primary, Partner, Joint). Save.</p>
-<p>If household members have different advisers assigned, the system flags a mismatch warning.</p>`,
+<p>Go to Households in the sidebar. Click <strong>+ New household</strong>. Select the primary client and partner. Assign roles (Primary, Partner, Joint). Save.</p>
+<p>If household members have different advisers, the system flags a mismatch warning on the household record.</p>`,
 
       leads:`<h3>Leads pipeline</h3>
 <p>Track prospective clients from first contact through to onboarding.</p>
 <h3>Lead statuses</h3>
 <p><strong>Initial</strong> — first contact made. <strong>Proceeding</strong> — actively progressing. <strong>Not Proceeding</strong> — no longer active.</p>
 <h3>Converting a lead</h3>
-<p>Open the lead record and click <strong>Convert to client</strong>. A client record is created with the lead&#39;s details pre-filled.</p>`,
+<p>Open the lead record and click <strong>Convert to client</strong>. A full client record is created with the lead&#39;s details pre-filled.</p>`,
 
       policies:`<h3>Policies & investments</h3>
-<p>The global Policies view shows all policies across ${isMgmt||isAdmin?'the practice':'your clients'}. Filter by adviser, sort by any column.</p>
-<p>Click any policy row to navigate to that client&#39;s record and policies tab.</p>`,
+<p>The global Policies view shows all policies across ${isMgmt||isAdmin?'the practice':'your clients'}. Filter by adviser, sort by any column. Click any row to navigate to the client&#39;s Policies tab.</p>`,
 
       fees:`<h3>Fees & fee ledger</h3>
-<p>The Fees view shows all fee arrangements. The Fees Ledger shows individual transactions. Cash Flows shows standing instructions — contributions and regular drawdown.</p>
+<p>The <strong>Fees</strong> view shows all fee arrangements. The <strong>Fees Ledger</strong> shows individual transactions. <strong>Cash Flows</strong> shows standing instructions — contributions and regular drawdown payments.</p>
 <p>All views support adviser filtering and CSV export.</p>`,
 
       approvals:`<h3>Pending approvals</h3>
-<p>When a client submits a change via their portal, it lands here before being applied. Nothing a client submits takes effect until it is approved.</p>
+<p>When a client submits a change via their portal, it lands here before being applied. Nothing a client submits takes effect until it is approved by the practice.</p>
 <h3>Reviewing a change</h3>
-<p>The diff view shows the old value and the new value side by side. Click <strong>Approve & apply</strong> to apply the change to the client record, or <strong>Reject</strong> to decline it.</p>
+<p>The diff view shows old and new values side by side. Click <strong>Approve & apply</strong> to apply the change to the client record, or <strong>Reject</strong> to decline it.</p>
 <p>The red badge on the Approvals sidebar item shows how many are waiting.</p>`,
 
       export:`<h3>Export data</h3>
-<p>Download CSV exports of clients, policies, reviews, fees, and tasks. Exports respect the current adviser filter.</p>
-${isMgmt?'<p>As Management you can also download a full JSON backup of the entire database. Keep this file secure — it contains all client data.</p>':''}`,
+<p>Download CSV exports of clients, policies, reviews, fees, and tasks. All exports respect the current adviser filter.</p>
+${isMgmt?'<p>As Management you can also download a full JSON backup of the entire database. Keep this file secure — it contains all client data.</p>':''}
+<h3>Bulk import</h3>
+<p>To import or update data in bulk, use the <strong>Bulk import</strong> section in the sidebar. See the Bulk import help topic for details.</p>`,
+
+      import:`<h3>Bulk import</h3>
+<p>The Bulk import section (sidebar, under Reporting) lets you upload CSV files to create or update records across the system.</p>
+<h3>Import types</h3>
+<p><strong>Policy valuations</strong> — update current values for existing policies. The template includes Client ID, client name, policy ID, plan number, policy type, provider, and current value. Plan number is included for reference when filling in values.</p>
+<p><strong>New clients</strong> — create new client records or update existing ones. Leave client_id blank to create, or set it to update.</p>
+<p><strong>Policies</strong> — add new policies or update existing ones on client records.</p>
+<p><strong>Reviews</strong> — schedule multiple reviews at once.</p>
+<p><strong>Tasks</strong> — bulk-create tasks across clients, with role assignment.</p>
+<p><strong>Fee arrangements</strong> — add fee records to existing clients.</p>
+<h3>Download templates</h3>
+<p><strong>Download template</strong> — a blank CSV with headers and one example row showing the required format. <strong>Download with existing data</strong> — pre-filled with current CRM data, ready to edit and re-upload as updates.</p>
+<h3>Upload and preview</h3>
+<p>Drag and drop a CSV file into the upload area or click Browse. The system validates every row and shows a preview table with each row&#39;s status (OK, Error, or Skip). Rows with errors are skipped automatically — you can import the valid rows immediately without fixing errors first. A summary shows total rows, valid rows, new records, updates, and errors.</p>
+<div class="help-tip">💡 Always download the "with existing data" version first as your template — the IDs are already filled in, reducing the risk of mismatched records.</div>`,
+
+      letter_gen:`<h3>Annual review letter generator</h3>
+<p>Generate a structured annual review letter pre-populated from the client&#39;s CRM data. Access it via the <strong>✉ Review letter</strong> button in the client profile header.</p>
+<h3>Choosing a mode</h3>
+<p><strong>CRM data only</strong> — generates immediately using information already in the system. <strong>CRM + meeting transcript</strong> — will use an uploaded transcript to add narrative detail and extract agreed actions (requires API connection — coming soon).</p>
+<h3>What the letter includes</h3>
+<p><strong>Opening</strong> — meeting confirmation with the date of the last completed review. <strong>Current position</strong> — total AUM, each active policy listed by type, provider, plan number, and value; percentage change since last review if available. <strong>Risk profile</strong> — confirms the recorded ATR and that investments remain aligned. <strong>Goals</strong> — active goals with timeframes; achieved goals noted separately. <strong>Review discussion</strong> — uses the last review&#39;s outcome notes as narrative; open service cases listed. <strong>Agreed actions</strong> — all open tasks for the client with due dates and owner. <strong>Fees</strong> — all active fee arrangements with basis and total annual charge. <strong>Next review</strong> — scheduled date, time, and location if booked. <strong>Regulatory footer</strong> — standard investment risk warning and FCA disclosure.</p>
+<h3>Editing</h3>
+<p>The letter opens in a full-width editable text area. Every section can be freely adjusted before saving or exporting — nothing is committed until you take an action.</p>
+<h3>Export options</h3>
+<p><strong>📄 Export PDF</strong> — opens a new browser tab with an A4 print layout. The letter is formatted with the firm name and FCA statement in the header, styled section headings, and a regulatory footer. Click <strong>Print / Save as PDF</strong> in the preview to save as a PDF file via your browser&#39;s print dialog (select "Save as PDF" as the destination).</p>
+<p><strong>⬇ Download .txt</strong> — saves the plain text version named with the client name and date.</p>
+<p><strong>📋 Copy</strong> — copies the full letter to the clipboard for pasting into email or Word.</p>
+<h3>Saving to a review</h3>
+<p>The <strong>Save to review</strong> panel at the bottom of the editor shows a dropdown of all the client&#39;s reviews, pre-selecting the most recent completed one. Select the relevant review and click <strong>✓ Save</strong>. The letter text (as currently edited) is stored against that review record.</p>
+<p>Once saved, the Reviews tab shows a green <strong>📄 letter filed</strong> badge on that review card, a <strong>View letter</strong> button to reopen the editor, and a note showing who saved it and when. The letter can be edited and re-saved at any time.</p>
+<div class="help-tip">💡 Check the agreed actions section before generating — it pulls from all open tasks on the client record. Tick off any already-completed tasks first so they don&#39;t appear as outstanding actions in the letter.</div>`,
 
       audit:`<h3>Audit trail</h3>
-<p>A full log of every action taken in the system — logins, record updates, case creations, document additions. Visible to Management only.</p>
-<p>The log is trimmed to the 2,000 most recent entries. Search by client name or scroll to find specific events.</p>`,
+<p>A full log of every action taken in the system — logins, record updates, case creations, document additions, and bulk imports. Visible to Management only.</p>
+<p>The log is trimmed to the 2,000 most recent entries. Scroll to find specific events or search by client name.</p>`,
 
       portal:`<h3>Client portal</h3>
 <p>Give clients secure online access to their own financial information.</p>
 <h3>Setting up access</h3>
 <p>Open the client profile → Personal tab. Scroll to <em>Client portal access</em>. Set a 4-digit PIN. Save. Give the client the practice URL and their PIN — they log in with their email address.</p>
-<h3>What clients can do</h3>
-<p>View their portfolio, fees, reviews, goals, documents, and personal details. Submit updates to personal details, financial information, and goals — all changes come to you as pending approvals before being applied.</p>
+<h3>What clients can see</h3>
+<p>Dashboard (portfolio summary, next review, goals), personal details, fact find, goals, documents, policies, reviews, fees, and a Help tab explaining how to use the portal.</p>
+<h3>What clients can submit</h3>
+<p>Updates to personal details, financial information, and goals. All submissions arrive as pending approvals — nothing is applied automatically without adviser sign-off.</p>
 <h3>Previewing the portal</h3>
-<p>Click <strong>👁 Client view</strong> on any client profile to see their portal as they would see it.</p>`,
+<p>Click <strong>👁 Client view</strong> on any client profile to preview the portal exactly as the client sees it, including the Help tab.</p>`,
     };
     return items[id]||'<p>No guidance available for this topic.</p>';
   }
@@ -1188,6 +1260,291 @@ function setHelpTopic(id){
   rV();
 }
 
+// ── Annual Review Letter Generator ───────────────────────────────────────────
+function openLetterGen(cid){
+  const c=db.cl.find(x=>x.id===cid);if(!c)return;
+  const html=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">'+
+      // Option 1 — CRM only
+      '<div onclick="startLetterGen('+cid+',\'crm\')" style="border:2px solid var(--green-bdr);border-radius:10px;padding:20px 18px;cursor:pointer;background:var(--green-bg);transition:box-shadow .15s" '+
+        'onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.12)\'" onmouseout="this.style.boxShadow=\'none\'">'+
+        '<div style="font-size:22px;margin-bottom:8px">📋</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px">CRM data only</div>'+
+        '<div style="font-size:12px;color:var(--txt2);line-height:1.5">Generate a full review letter using information already held in the CRM — policies, values, risk profile, goals, last review outcome, fees, and open actions.</div>'+
+        '<div style="margin-top:12px"><span class="badge bg">Available now</span></div>'+
+      '</div>'+
+      // Option 2 — CRM + transcript (coming soon)
+      '<div style="border:2px solid var(--bdr2);border-radius:10px;padding:20px 18px;opacity:.6;background:var(--bg2);position:relative;overflow:hidden">'+
+        '<div style="font-size:22px;margin-bottom:8px">🎙️</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px">CRM + meeting transcript</div>'+
+        '<div style="font-size:12px;color:var(--txt2);line-height:1.5">Upload or paste a meeting transcript and Claude will extract discussion points, agreed actions, and specific recommendations to create a richer, more personalised letter.</div>'+
+        '<div style="margin-top:12px"><span class="badge bk">Coming soon</span></div>'+
+        '<div style="position:absolute;top:10px;right:10px;font-size:10px;background:var(--navy);color:#fff;padding:2px 8px;border-radius:10px;font-weight:600">API required</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--txt3);text-align:center;padding-top:4px">Generating for: <strong>'+fnd(c)+'</strong></div>';
+  const ft='<button class="btn" onclick="closeM()">Cancel</button>';
+  showM('Annual Review Letter',html,'',ft,'lg');
+}
+
+function startLetterGen(cid,mode){
+  closeM();
+  const c=db.cl.find(x=>x.id===cid);if(!c)return;
+  const letter=buildReviewLetter(c);
+  showLetterEditor(c,letter);
+}
+
+function buildReviewLetter(c){
+  // ── Gather all data ──────────────────────────────────────────────────────
+  const adviser=c.adviser||'Your adviser';
+  const todayStr=now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const aum=(c.pols||[]).filter(p=>p.planStatus==='In Force').reduce((s,p)=>s+(p.value||0),0);
+  const annualFees=(c.fees||[]).filter(f=>f.status==='Active').reduce((s,f)=>s+(f.amount||0),0);
+
+  // Last completed review
+  const completedRevs=db.rv.filter(rv=>rv.cid===c.id&&rv.status==='Completed').sort((a,b)=>b.date.localeCompare(a.date));
+  const lastRev=completedRevs[0]||null;
+  const lastRevAum=lastRev?.aum||null;
+  const perfChange=lastRevAum&&aum?(((aum-lastRevAum)/lastRevAum)*100).toFixed(1):null;
+
+  // Next scheduled review
+  const nextRev=db.rv.filter(rv=>rv.cid===c.id&&rv.status==='Scheduled').sort((a,b)=>a.date.localeCompare(b.date))[0]||null;
+
+  // Open tasks (actions)
+  const openTasks=db.tk.filter(t=>t.cid===c.id&&!t.done);
+
+  // Goals
+  const goals=(c.ff?.goalsList||[]).filter(g=>g.status!=='Achieved');
+  const achievedGoals=(c.ff?.goalsList||[]).filter(g=>g.status==='Achieved');
+
+  // Policies
+  const activePols=(c.pols||[]).filter(p=>p.planStatus==='In Force');
+  const polsByType={};
+  activePols.forEach(p=>{if(!polsByType[p.type])polsByType[p.type]=[];polsByType[p.type].push(p);});
+
+  // Risk
+  const riskLabel=c.attNotes||({1:'Cautious',2:'Cautious',3:'Cautious',4:'Moderate',5:'Moderate',6:'Moderate',7:'Moderately adventurous',8:'Moderately adventurous',9:'Adventurous',10:'Adventurous'}[c.risk])||'Moderate';
+
+  // Fees breakdown
+  const activeFees=(c.fees||[]).filter(f=>f.status==='Active');
+
+  // Open service cases
+  const openCases=(c.cases||[]).filter(cs=>!['Complete','Not Proceeding','Rejected'].includes(cs.status));
+
+  // ── Build letter sections ─────────────────────────────────────────────────
+  const salutation=c.title&&c.lastName?'Dear '+c.title+' '+c.lastName:'Dear '+c.firstName;
+
+  const intro=
+    'Annual Review — '+todayStr+'\n\n'+
+    salutation+'\n\n'+
+    'Thank you for taking the time to meet with us'+(lastRev?' on '+fd(lastRev.date):' recently')+' for your annual financial planning review. '+
+    'This letter summarises the key points discussed, your current financial position, and the actions we have agreed going forward.\n\n'+
+    'Please read this letter carefully and contact us if you have any questions or if anything does not reflect your understanding of our discussions.';
+
+  // Current position
+  let posSection='YOUR CURRENT FINANCIAL POSITION\n\n';
+  if(aum>0){
+    posSection+='The total value of your investment and pension portfolio as at '+todayStr+' stands at '+fm(aum)+'.\n';
+    if(perfChange!==null&&lastRev){
+      const dir=parseFloat(perfChange)>=0?'an increase':'a decrease';
+      posSection+='This represents '+dir+' of '+Math.abs(parseFloat(perfChange))+'% since your last review on '+fd(lastRev.date)+', when the total value was '+fm(lastRevAum)+'.\n';
+    }
+    posSection+='\n';
+  }
+  if(Object.keys(polsByType).length>0){
+    posSection+='Your portfolio comprises the following holdings:\n\n';
+    Object.entries(polsByType).forEach(([type,pols])=>{
+      pols.forEach(p=>{
+        posSection+='  • '+type+' — '+p.provider+(p.planNumber?' ('+p.planNumber+')':'')+': '+fm(p.value||0)+'\n';
+      });
+    });
+    posSection+='\n';
+  }
+
+  // Risk profile
+  let riskSection='YOUR ATTITUDE TO RISK\n\n'+
+    'Your current risk profile is recorded as '+riskLabel+(c.risk?' ('+c.risk+' out of 10)':'')+'.\n';
+  if(c.attNotes&&c.attNotes!==riskLabel){
+    riskSection+='Your attitude to risk is described as: '+c.attNotes+'.\n';
+  }
+  riskSection+='\nWe have confirmed that your existing investments remain in line with your stated attitude to risk and capacity for loss.\n';
+
+  // Goals
+  let goalsSection='YOUR FINANCIAL GOALS\n\n';
+  if(goals.length){
+    goalsSection+='We reviewed your financial goals during our meeting. Your current active goals are:\n\n';
+    goals.forEach(g=>{ goalsSection+='  • '+(g.goal||g.description||'Goal')+(g.timeframe?' — '+g.timeframe:'')+(g.status&&g.status!=='Active'?' ('+g.status+')':'')+'\n'; });
+    goalsSection+='\n';
+  }
+  if(achievedGoals.length){
+    goalsSection+='We are pleased to note the following goals have been achieved:\n\n';
+    achievedGoals.forEach(g=>{ goalsSection+='  • '+(g.goal||g.description||'Goal')+'\n'; });
+    goalsSection+='\n';
+  }
+  if(!goals.length&&!achievedGoals.length){
+    goalsSection+='Your financial goals remain as discussed during our meeting. We will continue to work towards these objectives as part of your ongoing financial plan.\n\n';
+  }
+
+  // Review outcome / recommendations
+  let recSection='REVIEW DISCUSSION AND RECOMMENDATIONS\n\n';
+  if(lastRev?.outcome){
+    recSection+=lastRev.outcome+'\n\n';
+  } else {
+    recSection+='During our review we discussed your current financial position, investment performance, and ongoing financial planning requirements.\n\n';
+  }
+  if(openCases.length){
+    recSection+='The following matters are currently in progress:\n\n';
+    openCases.forEach(cs=>{
+      recSection+='  • '+cs.category+(cs.adviceType?' — '+cs.adviceType:'')+(cs.status?' ('+cs.status+')':'')+'\n';
+      if(cs.srBrief)recSection+='    '+cs.srBrief+'\n';
+    });
+    recSection+='\n';
+  }
+
+  // Agreed actions
+  let actionsSection='';
+  if(openTasks.length){
+    actionsSection='AGREED ACTIONS\n\n'+
+      'The following actions were agreed at or following our review:\n\n';
+    openTasks.forEach(t=>{
+      actionsSection+='  • '+t.title+(t.due?' — by '+fd(t.due):'')+(t.assignedRole&&t.assignedRole!=='Adviser'?' ['+t.assignedRole+']':'')+'\n';
+    });
+    actionsSection+='\n';
+  }
+
+  // Fees
+  let feesSection='YOUR ADVISER CHARGES\n\n';
+  if(activeFees.length){
+    feesSection+='Your current adviser charge arrangements are as follows:\n\n';
+    activeFees.forEach(f=>{
+      feesSection+='  • '+(f.description||f.type)+': '+fm(f.amount||0)+(f.frequency?' per '+f.frequency.toLowerCase():'')+' ('+( f.basis||'Ongoing')+')\n';
+    });
+    feesSection+='\nTotal ongoing annual adviser charges: '+fm(annualFees)+'\n\n';
+  } else {
+    feesSection+='Your adviser charge arrangements remain as previously agreed. A separate schedule of charges is available on request.\n\n';
+  }
+
+  // Next review
+  let nextSection='YOUR NEXT REVIEW\n\n';
+  if(nextRev){
+    nextSection+='Your next review is scheduled for '+fd(nextRev.date)+(nextRev.time?' at '+nextRev.time:'')+(nextRev.loc?' ('+nextRev.loc+')':'')+'. We will write to you in advance with an agenda.\n\n';
+  } else {
+    nextSection+='We will be in touch to arrange your next annual review. In the meantime, please do not hesitate to contact us if your circumstances change or if you have any questions about your financial plan.\n\n';
+  }
+
+  // Footer
+  const footer=
+    'Please note that this letter is a summary of our discussions and does not constitute financial advice. The value of investments can go down as well as up and you may not get back the amount originally invested. Past performance is not a reliable indicator of future results.\n\n'+
+    'If you have any questions regarding the contents of this letter, please contact us at your earliest convenience.\n\n'+
+    'Yours sincerely,\n\n\n'+
+    adviser+'\n'+
+    'Nexus Independent Financial Advisers Limited\n'+
+    '[Practice address]\n'+
+    '[FCA number]\n\n'+
+    'Nexus IFA is authorised and regulated by the Financial Conduct Authority.';
+
+  return [intro,'',posSection,riskSection,'',goalsSection,recSection,actionsSection,feesSection,nextSection,footer].join('\n');
+}
+
+function showLetterEditor(c,letter,sourceRevId){
+  const revs=db.rv.filter(rv=>rv.cid===c.id).sort((a,b)=>b.date.localeCompare(a.date));
+  const defaultRevId=sourceRevId||(revs.find(r=>r.status==='Completed')||revs[0])?.id;
+  const revOpts=revs.map(rv=>'<option value="'+rv.id+'" '+(rv.id===defaultRevId?'selected':'')+'>'+fd(rv.date)+' \u2014 '+rv.type+' ('+rv.status+')'+(rv.letter?' \u2713 letter filed':'')+'</option>').join('');
+  const hasRevs=revs.length>0;
+  const html=
+    '<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+      '<span style="font-size:11px;color:var(--txt2)">Generated from CRM data \u2022 '+fnd(c)+' \u2022 '+now.toLocaleDateString('en-GB')+'</span>'+
+      '<span style="flex:1"></span>'+
+      '<button class="btn btn-sm" onclick="copyLetter()">&#128203; Copy</button>'+
+      '<button class="btn btn-sm" onclick="pdfLetter(\''+c.id+'\')">&#128196; Export PDF</button>'+
+      '<button class="btn btn-sm btn-p" onclick="dlLetter(\''+c.id+'\')">&#x2B07; .txt</button>'+
+    '</div>'+
+    '<textarea id="letter-body" style="width:100%;height:calc(70vh - 185px);font-family:Georgia,serif;font-size:12px;line-height:1.7;padding:16px;border:1px solid var(--bdr2);border-radius:6px;background:var(--bg);color:var(--txt);resize:vertical;white-space:pre-wrap">'+
+      letter.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+
+    '</textarea>'+
+    '<div style="margin-top:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<span style="font-size:11px;font-weight:600;color:var(--navy);flex-shrink:0">&#128196; Save to review:</span>'+
+      (hasRevs?'<select id="letter-rev-sel" style="font-size:11px;padding:4px 8px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg);color:var(--txt);flex:1;min-width:180px">'+revOpts+'</select><button class="btn btn-sm btn-p" onclick="saveLetterToRev(\''+c.id+'\')">&#10003; Save</button>':'<span style="font-size:11px;color:var(--txt2)">No reviews on record.</span>')+
+    '</div>'+
+    '<div style="font-size:10px;color:var(--txt3);margin-top:6px">Fully editable. Save to a review record, export as PDF, or download.</div>';
+  const ft='<button class="btn" onclick="closeM()">Close</button>';
+  showM('Annual Review Letter \u2014 '+fnd(c),html,'',ft,'xl');
+}
+function saveLetterToRev(cid){
+  const ta=document.getElementById('letter-body');
+  const sel=document.getElementById('letter-rev-sel');
+  if(!ta||!sel){toast('Could not read letter','err');return;}
+  const rid=parseInt(sel.value);
+  const rv=db.rv.find(x=>x.id===rid);
+  if(!rv){toast('Review not found','err');return;}
+  const text=ta.value.trim();
+  if(!text){toast('Letter is empty','err');return;}
+  rv.letter={text,savedAt:new Date().toISOString(),savedBy:_session&&_session.user?_session.user.name:'Unknown'};
+  sDb();
+  logAudit('CREATE','letter','Review letter filed for '+rv.cn+' \u2014 review '+fd(rv.date),{cid:rv.cid,cn:rv.cn});
+  toast('Letter saved to review \u2014 '+fd(rv.date));
+  const opt=sel.options[sel.selectedIndex];
+  if(opt&&opt.text.indexOf('\u2713')===-1)opt.text+=' \u2713 letter filed';
+}
+function pdfLetter(cid){
+  const ta=document.getElementById('letter-body');if(!ta)return;
+  const c=db.cl.find(x=>x.id===parseInt(cid));
+  const text=ta.value;
+  const name=c?fnd(c):'Client';
+  const date=now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const lines=text.split('\n');
+  let html='';
+  for(const line of lines){
+    const t=line.trim();
+    if(!t){html+='<div style="height:0.5em"></div>';continue;}
+    if(t===t.toUpperCase()&&t.length>3&&!/^\d/.test(t)&&t.charAt(0)!=='\u2022'){
+      html+='<div style="font-weight:700;font-size:11pt;color:#1B2A4A;margin-top:16pt;margin-bottom:4pt;padding-bottom:3pt;border-bottom:1pt solid #ddd">'+t+'</div>';
+    } else if(t.charAt(0)==='\u2022'){
+      html+='<div style="margin-left:14pt;margin-bottom:3pt">'+t+'</div>';
+    } else {
+      html+='<p style="margin:0 0 5pt">'+t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
+    }
+  }
+  const win=window.open('','_blank');
+  if(!win){toast('Allow pop-ups to export PDF','err');return;}
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Review Letter</title>'+
+    '<style>@page{size:A4;margin:20mm 22mm 20mm 22mm}*{box-sizing:border-box}body{font-family:Georgia,serif;font-size:10.5pt;line-height:1.65;color:#222;margin:0;padding:0}.hdr{display:flex;justify-content:space-between;padding-bottom:12pt;margin-bottom:18pt;border-bottom:2pt solid #1B2A4A}.fn{font-size:15pt;font-weight:700;color:#1B2A4A;font-family:Arial,sans-serif}.fs{font-size:9pt;color:#666;font-family:Arial,sans-serif;margin-top:2pt}.lm{text-align:right;font-size:9pt;color:#555;font-family:Arial,sans-serif}.ftr{position:fixed;bottom:0;left:0;right:0;padding:5pt 22mm;border-top:0.5pt solid #ddd;font-size:7.5pt;color:#888;font-family:Arial,sans-serif;text-align:center}@media print{.np{display:none}}</style>'+
+    '</head><body>'+
+    '<div class="np" style="background:#1B2A4A;color:#fff;padding:10px 20px;font-family:Arial,sans-serif;font-size:12px;display:flex;gap:12px;align-items:center">'+
+      '<span>Annual Review Letter &mdash; '+name+'</span>'+
+      '<button onclick="window.print()" style="background:#4CAF7D;border:none;color:#fff;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">Print / Save as PDF</button>'+
+      '<button onclick="window.close()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px">Close</button>'+
+    '</div>'+
+    '<div><div class="hdr">'+
+      '<div><div class="fn">Nexus Independent Financial Advisers</div><div class="fs">Authorised and regulated by the Financial Conduct Authority</div></div>'+
+      '<div class="lm"><div style="font-weight:600">'+name+'</div><div>'+date+'</div><div style="margin-top:4pt;color:#1B2A4A;font-weight:600">Annual Review Letter</div></div>'+
+    '</div>'+html+'</div>'+
+    '<div class="ftr">Nexus Independent Financial Advisers Limited &bull; [Practice address] &bull; FCA No: [000000]<br>This letter is for the named recipient only and does not constitute financial advice.</div>'+
+    '</body></html>');
+  win.document.close();
+}
+function viewFiledLetter(rvId){
+  const rv=db.rv.find(x=>x.id===rvId);if(!rv||!rv.letter)return;
+  const c=db.cl.find(x=>x.id===rv.cid);if(!c)return;
+  showLetterEditor(c,rv.letter.text,rvId);
+}
+function copyLetter(){
+  const ta=document.getElementById('letter-body');if(!ta)return;
+  ta.select();
+  try{document.execCommand('copy');toast('Copied to clipboard');}
+  catch(e){toast('Select all and copy manually','err');}
+}
+function dlLetter(cid){
+  const ta=document.getElementById('letter-body');if(!ta)return;
+  const c=db.cl.find(x=>x.id===parseInt(cid));
+  const fname=(c?c.lastName+'_'+c.firstName:'client')+'_review_letter_'+now.toISOString().slice(0,10)+'.txt';
+  const b=new Blob([ta.value],{type:'text/plain'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download=fname;a.click();
+  URL.revokeObjectURL(u);
+  toast('Downloaded '+fname);
+}
+
 function logAudit(action,type,desc,opts){
   if(!db.au)db.au=[];
   const user=_session?_session.user.name:'System';
@@ -1218,6 +1575,7 @@ function nav(v,id){
     if(ll&&!canSee(ll.adviser)){toast('Access denied','err');return;}
   }
   vw=v;if(id!==undefined)sid=id;
+  closeCalPop();
   if(v!=='cd'&&v!=='ld')ct='overview';
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   const ni=document.getElementById('ni-'+v);
@@ -2037,6 +2395,7 @@ function pgCD(){
       ${c.vulnerable?'<span class="badge br">Vulnerable</span>':''}
       <button class="btn btn-sm" onclick="printClient(${c.id})" style="margin-left:4px">&#128438; Export PDF</button>
       <button class="btn btn-sm" onclick="buildAgenda(${c.id})">&#128203; Review agenda</button>
+      <button class="btn btn-sm" onclick="openLetterGen(${c.id})" style="background:var(--green-bg);border-color:var(--green-bdr);color:var(--green-txt)">&#9993; Review letter</button>
       <button class="btn btn-sm" onclick="navHelp('cd:'+ct)" title="Help for this tab" style="background:var(--bg2);border-color:var(--bdr2);font-size:12px">&#x2753; Help</button>
       <button class="btn btn-sm" onclick="previewPortal(${c.id})" style="background:var(--blue-bg);border-color:var(--blue-bdr);color:var(--blue-txt)">&#x1F441; Client view</button>
     </div>
@@ -2507,13 +2866,19 @@ function tRevs(c){
   return h+[...rvs].sort((a,b)=>b.date.localeCompare(a.date)).map(rv=>`<div class="card" style="margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
       <div><div style="font-weight:600;font-size:12px">${rv.type}</div><div style="font-size:10px;color:var(--txt2)">${fd(rv.date)} &bull; ${rv.time||''} &bull; ${rv.loc||''}</div></div>
-      <div style="display:flex;gap:4px"><span class="badge ${sCls(rv.status)}">${rv.status}</span><button class="btn btn-sm" onclick="oRev(${rv.id})">Open</button></div>
+      <div style="display:flex;gap:4px;align-items:center">
+        <span class="badge ${sCls(rv.status)}">${rv.status}</span>
+        ${rv.letter?'<span class="badge bg" style="font-size:9px">&#128196; letter filed</span>':''}
+        ${rv.letter?'<button class="btn btn-sm" onclick="viewFiledLetter('+rv.id+')">View letter</button>':''}
+        <button class="btn btn-sm" onclick="oRev(${rv.id})">Open</button>
+      </div>
     </div>
     <div class="g2">
       <div class="dr"><span class="dlabel">Checklist</span><span>${(rv.cl||[]).filter(x=>x.done).length}/${(rv.cl||[]).length} done</span></div>
       <div class="dr"><span class="dlabel">Next review</span><span>${fd(rv.nextDate)}</span></div>
     </div>
     ${rv.outcome?'<p style="font-size:10px;color:var(--txt2);margin-top:6px">'+rv.outcome+'</p>':''}
+    ${rv.letter?'<div style="font-size:10px;color:var(--txt3);margin-top:4px">Letter saved '+fd(rv.letter.savedAt.slice(0,10))+' by '+rv.letter.savedBy+'</div>':''}
   </div>`).join('');
 }
 function tComp(c){
@@ -2584,7 +2949,7 @@ function pgCal(){
     const isT=ds===tdStr;const rvs=(byD[ds]||[]);
     const sh=rvs.slice(0,3);const more=rvs.length-sh.length;
     const evs=sh.map(rv=>`<div class="cal-ev ${{Scheduled:'ev-s',Completed:'ev-c',Overdue:'ev-o',Cancelled:'ev-x'}[rv.status]||'ev-s'}" onclick="oRev(${rv.id});event.stopPropagation()" title="${rv.cn}">${rv.time||''} ${ini(rv.cn)}</div>`).join('');
-    cells+=`<div class="cal-cell${om?' om':''}${isT?' td':''}" onclick="oSched(null,'${ds}')"><div class="cal-date">${day}</div>${evs}${more>0?`<div style="font-size:8px;color:var(--txt3)">+${more}</div>`:''}</div>`;
+    cells+=`<div class="cal-cell${om?' om':''}${isT?' td':''}" onclick="clickDay('${ds}',this)"><div class="cal-date">${day}</div>${evs}${more>0?`<div style="font-size:8px;color:var(--txt3)">+${more}</div>`:''}</div>`;
   }
   return`<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:13px">
     <div class="cal-hdr">${days.map(d=>'<div class="cal-dh">'+d+'</div>').join('')}</div>
@@ -2594,6 +2959,58 @@ function pgCal(){
     </div>
   </div>`;
 }
+function clickDay(ds, el){
+  const adf=afl();
+  const rvs=db.rv.filter(rv=>rv.date===ds&&(!adf||rv.adviser===adf))
+    .sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const MNS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dt=new Date(ds+'T12:00:00');
+  const dayLabel=dt.getDate()+' '+MNS[dt.getMonth()]+' '+dt.getFullYear();
+
+  // Build body
+  const stCls={Scheduled:'ev-s',Completed:'ev-c',Overdue:'ev-o',Cancelled:'ev-x'};
+  const body= rvs.length===0
+    ? '<div style="color:var(--txt2);font-size:12px;padding:6px 2px">No reviews scheduled.</div>'
+    : rvs.map(rv=>{
+        const done=(rv.cl||[]).filter(x=>x.done).length, tot=(rv.cl||[]).length;
+        return '<div class="cal-pop-rv">'+
+          '<span class="cal-ev '+(stCls[rv.status]||'ev-s')+'" style="font-size:9px;padding:2px 5px;flex-shrink:0;margin-top:2px">'+(rv.time||'--')+'</span>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+rv.cn+'</div>'+
+            '<div style="font-size:10px;color:var(--txt2);margin-top:1px">'+rv.type+(rv.loc?' &bull; '+rv.loc:'')+(rv.adviser?' &bull; '+rv.adviser:'')+'</div>'+
+            (tot>0?'<div style="font-size:10px;color:var(--txt3);margin-top:1px">Checklist '+done+'/'+tot+(rv.aum?' &bull; '+fm(rv.aum):'')+'</div>':'')+
+            (rv.outcome?'<div style="font-size:10px;color:var(--txt2);margin-top:2px;font-style:italic">'+rv.outcome.slice(0,60)+(rv.outcome.length>60?'…':'')+'</div>':'')+
+          '</div>'+
+          '<button class="btn btn-sm" style="font-size:10px;padding:2px 7px;flex-shrink:0" onclick="closeCalPop();oRev('+rv.id+')">Open</button>'+
+        '</div>';
+      }).join('');
+
+  // Populate
+  document.getElementById('cal-pop-title').textContent=dayLabel+(rvs.length?' ('+rvs.length+')':'');
+  document.getElementById('cal-pop-body').innerHTML=body;
+  document.getElementById('cal-pop-new').onclick=()=>{closeCalPop();oSched(null,ds);};
+
+  // Position: below the clicked cell, flip up if near bottom, flip left if near right edge
+  const pop=document.getElementById('cal-pop');
+  pop.classList.add('open');
+  const rect=el.getBoundingClientRect();
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const pw=300, ph=Math.min(pop.scrollHeight||420, 420);
+  let left=rect.left, top=rect.bottom+6;
+  if(left+pw>vw-8)left=Math.max(8,vw-pw-8);
+  if(top+ph>vh-8)top=Math.max(8,rect.top-ph-6);
+  pop.style.left=left+'px';
+  pop.style.top=top+'px';
+}
+function closeCalPop(){
+  const p=document.getElementById('cal-pop');if(p)p.classList.remove('open');
+}
+// Close popout on outside click or Escape
+document.addEventListener('click',function(e){
+  const pop=document.getElementById('cal-pop');
+  if(pop&&pop.classList.contains('open')&&!pop.contains(e.target)&&!e.target.closest('.cal-cell'))closeCalPop();
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCalPop();});
 function chM(d){cM+=d;if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}rV();}
 function goTd(){cY=now.getFullYear();cM=now.getMonth();rV();}
 function pgRevs(rvs){
@@ -2678,7 +3095,7 @@ function oRev(id){
       <div class="field"><label>Next review date</label><input type="date" id="rnx" value="${rv.nextDate||''}"></div>
     </div>
     <div class="field"><label>Outcome / notes</label><textarea id="rout">${rv.outcome||''}</textarea></div>`;
-  const ft=`<button class="btn btn-d btn-sm" onclick="dRev(${id})">Delete</button><span style="flex:1"></span><button class="btn" onclick="closeM()">Close</button><button class="btn btn-p" onclick="saveRev(${id})">Save</button>`;
+  const ft=`<button class="btn btn-d btn-sm" onclick="dRev(${id})">Delete</button><span style="flex:1"></span>${rv.letter?'<button class="btn btn-sm" onclick="closeM();viewFiledLetter('+id+')">&#128196; View letter</button>':''}<button class="btn" onclick="closeM()">Close</button><button class="btn btn-p" onclick="saveRev(${id})">Save</button>`;
   showM(rv.cn+' - '+rv.type,html,'',ft);
 }
 function tChk(rid,i){
