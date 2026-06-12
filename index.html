@@ -1414,9 +1414,9 @@ const IMPORT_TYPES={
     label:'Policy valuations',
     desc:'Update current values for existing policies. Match by Client ID and policy ID.',
     icon:'📈',
-    cols:['client_id','client_name','policy_id','policy_type','provider','current_value'],
+    cols:['client_id','client_name','policy_id','plan_number','policy_type','provider','current_value'],
     required:['client_id','policy_id','current_value'],
-    notes:'client_name and provider are for reference only and are not imported.'
+    notes:'client_name, plan_number and provider are for reference only and are not imported. plan_number helps you identify the correct policy when filling in values.'
   },
   clients:{
     label:'New clients',
@@ -1532,7 +1532,7 @@ function dlImportTemplate(type){
   let csv=csvRow(def.cols)+'\n';
   // Add one example row with hints
   const ex={
-    valuations:['101','Mr Robert Hall','P1_0','Drawdown','Prudential','250000'],
+    valuations:['101','Mr Robert Hall','P1_0','PRU-54321','Drawdown','Prudential','250000'],
     clients:['','Mr','James','Wilson','1975-06-15','james.wilson@email.com','07700 900000','15 Oak Road, Solihull','Married','Employed','Emma Clarke','5','Active'],
     policies:['101','Mr Robert Hall','','Pension','Aviva','AV-12345','85000','500','2015-03-01','In Force'],
     reviews:['101','Mr Robert Hall','2026-09-15','10:00','Annual review','Office','Emma Clarke'],
@@ -1550,7 +1550,7 @@ function dlImportWithData(type){
   const clients=db.cl.filter(c=>!adf||c.adviser===adf);
   if(type==='valuations'){
     clients.forEach(c=>(c.pols||[]).forEach(p=>{
-      csv+=csvRow([c.id,fnd(c),p.id,p.type,p.provider,p.value||0])+'\n';
+      csv+=csvRow([c.id,fnd(c),p.id,p.planNumber||'',p.type,p.provider,p.value||0])+'\n';
     }));
   } else if(type==='clients'){
     clients.forEach(c=>{
@@ -1645,7 +1645,7 @@ function validateImportRows(type,rows){
           action='update';target=p;
           const newVal=parseFloat(row.current_value);
           if(isNaN(newVal)||newVal<0){errors.push('Invalid value: '+row.current_value);}
-          else{warnings.push('£'+fm(p.value||0)+' → £'+fm(newVal));}
+          else{warnings.push((p.planNumber?p.planNumber+': ':'')+'£'+fm(p.value||0)+' → £'+fm(newVal));}
         }
       }
     } else if(type==='clients'){
