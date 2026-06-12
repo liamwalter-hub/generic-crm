@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local backups (never commit client data exports)
+*.json
+!package.json
+
+# Node (if tooling added later)
+node_modules/
+npm-debug.log*
+
+# Environment / secrets (if backend added later)
+.env
+.env.local
+.env.*.local
