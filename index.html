@@ -565,7 +565,10 @@ const PSTS=['In Force','Submitted to Provider','Underwriting','Deferred','Declin
 const CHL=['Review investment performance vs benchmarks','Check asset allocation vs risk profile','Review pension contributions & projections','Assess protection cover adequacy','Review income & expenditure changes','Update fact find if circumstances changed','Check tax position and allowances','Review estate planning / will / POA','Discuss new goals or objectives','Confirm ongoing adviser charge','Issue updated suitability report','Send client review summary letter'];
 let db={cl:[],ld:[],rv:[],hh:[],tk:[],fl:[],fe:[],nl:[],au:[],ni:1,li:1,ri:1,hi:1,ti:1,fli:1,fei:1,nli:1};
 let vw='clients',sid=null,ct='overview',cY,cM;
-const now=new Date();cY=now.getFullYear();cM=now.getMonth();
+const now=new Date();
+
+function mob(){return window.innerWidth<=540;}
+cY=now.getFullYear();cM=now.getMonth();
 const FM=['James','William','Robert','Thomas','David','Michael','Andrew','Richard','Peter','Christopher','Jonathan','Matthew','Oliver','Edward','Charles','George','Henry','Alexander','Daniel','Joseph','Samuel','Benjamin','Nicholas','Patrick','Simon'];
 const FF=['Sarah','Emma','Elizabeth','Helen','Claire','Rachel','Laura','Catherine','Jennifer','Susan','Margaret','Anne','Patricia','Amanda','Rebecca','Victoria','Charlotte','Sophie','Hannah','Alice','Olivia','Louise','Karen','Nicola','Julia'];
 const LN=['Smith','Jones','Williams','Taylor','Brown','Davies','Evans','Wilson','Thomas','Roberts','Johnson','Walker','Wright','Robinson','Thompson','White','Hughes','Edwards','Green','Hall','Lewis','Harris','Clarke','Cooper','Ward','Morris','Moore','King','Baker','Hill'];
@@ -1075,18 +1078,38 @@ function pgL(){
     <div class="sc"><div class="sl">Proceeding</div><div class="sv" style="color:var(--navy)">${db.ld.filter(l=>l.status==='Proceeding').length}</div></div>
     <div class="sc"><div class="sl">Not proceeding</div><div class="sv" style="color:var(--txt2)">${db.ld.filter(l=>l.status==='Not Proceeding').length}</div></div>
   </div>
-  <div class="tw"><table>
-    <thead><tr>${sh('ld','name','Name','22%')}${sh('ld','source','Source','14%')}${sh('ld','adviser','Adviser','13%')}${sh('ld','status','Status','12%')}<th style="width:22%">Notes</th>${sh('ld','created','Created','10%')}<th style="width:6%"></th></tr></thead>
-    <tbody>${lds.length===0?'<tr><td colspan="7"><div class="empty">No leads found.</div></td></tr>':lds.map(l=>`<tr onclick="nav('ld',${l.id})">
-      <td><div class="flex" style="min-width:0"><div class="av lead" style="flex-shrink:0">${ini(fnd(l))}</div><div style="min-width:0;overflow:hidden"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fnd(l)}</div><small style="color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${l.email}</small></div></div></td>
-      <td class="ellipsis" style="max-width:100px">${l.source||'--'}</td>
-      <td style="font-size:10px;color:var(--txt2)">${l.adviser||'--'}</td>
-      <td><span class="badge ${sCls(l.status)}">${l.status}</span>${l.npReason?`<div style="font-size:9px;color:var(--txt2);margin-top:2px">${l.npReason}</div>`:''}</td>
-      <td class="ellipsis" style="font-size:10px;color:var(--txt2)">${l.notes||'--'}</td>
-      <td>${fd(l.created)}</td>
-      <td><button class="btn btn-sm" onclick="event.stopPropagation();nav('ld',${l.id})">View</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+  ${mob()?
+  (lds.length===0?'<div class="empty">No leads found.</div>':lds.map(l=>
+    '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'ld\','+l.id+')">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+        '<div class="av lead" style="flex-shrink:0">'+ini(fnd(l))+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:600;font-size:13px">'+fnd(l)+'</div>'+
+          '<div style="font-size:10px;color:var(--txt2)">'+l.email+'</div>'+
+        '</div>'+
+        '<span class="badge '+sCls(l.status)+'">'+l.status+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">'+
+        '<div><span style="color:var(--txt2)">Source </span>'+(l.source||'--')+'</div>'+
+        '<div><span style="color:var(--txt2)">Adviser </span>'+(l.adviser||'--')+'</div>'+
+        '<div style="grid-column:1/-1"><span style="color:var(--txt2)">Added </span>'+fd(l.created)+'</div>'+
+        (l.notes?'<div style="grid-column:1/-1;color:var(--txt2);font-size:10px">'+l.notes+'</div>':'')+
+      '</div>'+
+    '</div>').join(''))
+  :
+  '<div class="tw"><table>'+
+  '<thead><tr>'+sh('ld','name','Name','22%')+sh('ld','source','Source','14%')+sh('ld','adviser','Adviser','13%')+sh('ld','status','Status','12%')+'<th style="width:22%">Notes</th>'+sh('ld','created','Created','10%')+'<th style="width:6%"></th></tr></thead>'+
+  '<tbody>'+(lds.length===0?'<tr><td colspan="7"><div class="empty">No leads found.</div></td></tr>':lds.map(l=>
+    '<tr onclick="nav(\'ld\','+l.id+')">'+
+      '<td><div class="flex" style="min-width:0"><div class="av lead" style="flex-shrink:0">'+ini(fnd(l))+'</div><div style="min-width:0;overflow:hidden"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+fnd(l)+'</div><small style="color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">'+l.email+'</small></div></div></td>'+
+      '<td class="ellipsis" style="max-width:100px">'+(l.source||'--')+'</td>'+
+      '<td style="font-size:10px;color:var(--txt2)">'+(l.adviser||'--')+'</td>'+
+      '<td><span class="badge '+sCls(l.status)+'">'+l.status+'</span>'+(l.npReason?'<div style="font-size:9px;color:var(--txt2);margin-top:2px">'+l.npReason+'</div>':'')+'</td>'+
+      '<td class="ellipsis" style="font-size:10px;color:var(--txt2)">'+(l.notes||'--')+'</td>'+
+      '<td>'+fd(l.created)+'</td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'ld\','+l.id+')">View</button></td>'+
+    '</tr>').join(''))+
+  '</tbody></table></div>'}`;
 }
 function pgLD(){
   const l=db.ld.find(x=>x.id===sid);if(!l)return'<div class="empty">Not found.</div>';
@@ -1181,23 +1204,43 @@ function pgC(){
     <div class="sc"><div class="sl">Annual fees</div><div class="sv" style="font-size:14px">${fm(tF)}</div></div>
     <div class="sc"><div class="sl">Showing</div><div class="sv">${cl.length}</div></div>
   </div>
-  <div class="tw"><table>
-    <thead><tr>${sh('cl','name','Client','20%')}${sh('cl','age','Age','5%')}${sh('cl','adviser','Adviser','12%')}${sh('cl','risk','Risk','9%')}${sh('cl','aum','AUM','10%')}<th style="width:5%">Pols</th>${sh('cl','fee','Fee/yr','9%')}${sh('cl','svcStatus','Status','10%')}<th style="width:7%">KYC</th><th style="width:5%"></th></tr></thead>
-    <tbody>${cl.map(c=>{
-      const aum=(c.pols||[]).reduce((s,p)=>s+(p.value||0),0);
-      const af2=(c.fees||[]).filter(f=>f.status==='Active').reduce((s,f)=>s+(f.amount||0),0);
-      const ssc={'Active':'bg','Prospect':'ba','Restricted Processing':'br','Deceased':'bk'}[c.svcStatus]||'bk';
-      return`<tr onclick="nav('cd',${c.id})">
-        <td><div class="flex" style="min-width:0"><div class="av" style="flex-shrink:0">${ini(fnd(c))}</div><div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${fnd(c)}</div></div></td>
-        <td>${age(c.dob)}</td>
-        <td class="ellipsis" style="font-size:10px;color:var(--txt2);max-width:100px">${c.adviser}</td>
-        <td><div style="font-size:10px">${c.risk}/10</div><div class="rb">${Array.from({length:10},(_,i)=>'<div class="rs'+(i<c.risk?' f':'')+'"></div>').join('')}</div></td>
-        <td>${fm(aum)}</td><td>${(c.pols||[]).length}</td><td>${fm(af2)}</td>
-        <td><span class="badge ${ssc}">${c.svcStatus||'Active'}</span></td>
-        <td><span class="badge ${c.kyc?'bg':'ba'}">${c.kyc?'OK':'Pending'}</span></td>
-        <td><button class="btn btn-sm" onclick="event.stopPropagation();nav('cd',${c.id})">View</button></td>
-      </tr>`;}).join('')}</tbody>
-  </table></div>`;
+  ${mob()?cl.map(c=>{
+    const aum=(c.pols||[]).reduce((s,p)=>s+(p.value||0),0);
+    const af2=(c.fees||[]).filter(f=>f.status==='Active').reduce((s,f)=>s+(f.amount||0),0);
+    const ssc={'Active':'bg','Prospect':'ba','Restricted Processing':'br','Deceased':'bk'}[c.svcStatus]||'bk';
+    return'<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'cd\','+c.id+')">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+        '<div class="av" style="flex-shrink:0">'+ini(fnd(c))+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+fnd(c)+'</div>'+
+          '<div style="font-size:10px;color:var(--txt2)">'+c.adviser+'</div>'+
+        '</div>'+
+        '<span class="badge '+ssc+'">'+( c.svcStatus||'Active')+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">'+
+        '<div><span style="color:var(--txt2)">AUM </span><strong>'+fm(aum)+'</strong></div>'+
+        '<div><span style="color:var(--txt2)">Fee/yr </span><strong>'+fm(af2)+'</strong></div>'+
+        '<div><span style="color:var(--txt2)">Risk </span><strong>'+c.risk+'/10</strong></div>'+
+        '<div><span style="color:var(--txt2)">KYC </span><span class="badge '+(c.kyc?'bg':'ba')+'" style="font-size:9px">'+(c.kyc?'OK':'Pending')+'</span></div>'+
+      '</div>'+
+    '</div>';}).join(''):
+  '<div class="tw"><table>'+
+  '<thead><tr>'+sh('cl','name','Client','20%')+sh('cl','age','Age','5%')+sh('cl','adviser','Adviser','12%')+sh('cl','risk','Risk','9%')+sh('cl','aum','AUM','10%')+'<th style="width:5%">Pols</th>'+sh('cl','fee','Fee/yr','9%')+sh('cl','svcStatus','Status','10%')+'<th style="width:7%">KYC</th><th style="width:5%"></th></tr></thead>'+
+  '<tbody>'+cl.map(c=>{
+    const aum=(c.pols||[]).reduce((s,p)=>s+(p.value||0),0);
+    const af2=(c.fees||[]).filter(f=>f.status==='Active').reduce((s,f)=>s+(f.amount||0),0);
+    const ssc={'Active':'bg','Prospect':'ba','Restricted Processing':'br','Deceased':'bk'}[c.svcStatus]||'bk';
+    return'<tr onclick="nav(\'cd\','+c.id+')">'+
+      '<td><div class="flex" style="min-width:0"><div class="av" style="flex-shrink:0">'+ini(fnd(c))+'</div><div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">'+fnd(c)+'</div></div></td>'+
+      '<td>'+age(c.dob)+'</td>'+
+      '<td class="ellipsis" style="font-size:10px;color:var(--txt2);max-width:100px">'+c.adviser+'</td>'+
+      '<td><div style="font-size:10px">'+c.risk+'/10</div><div class="rb">'+Array.from({length:10},(_,i)=>'<div class="rs'+(i<c.risk?' f':'')+'"></div>').join('')+'</div></td>'+
+      '<td>'+fm(aum)+'</td><td>'+(c.pols||[]).length+'</td><td>'+fm(af2)+'</td>'+
+      '<td><span class="badge '+ssc+'">'+(c.svcStatus||'Active')+'</span></td>'+
+      '<td><span class="badge '+(c.kyc?'bg':'ba')+'">'+(c.kyc?'OK':'Pending')+'</span></td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+c.id+')">View</button></td>'+
+    '</tr>';}).join('')+
+  '</tbody></table></div>'}`;
 }
 function pgCD(){
   const c=db.cl.find(x=>x.id===sid);if(!c)return'<div class="empty">Not found.</div>';
@@ -1766,18 +1809,39 @@ function pgRevs(rvs){
   const adf=afl();let filtered=adf?rvs.filter(rv=>rv.adviser===adf):rvs;
   filtered=sorted(filtered,'rv',(x,k)=>({aum:x.aum||0}[k]||x[k]));
   if(!filtered.length)return'<div class="empty">No reviews found.</div>';
-  return`<div class="tw"><table>
-    <thead><tr>${sh('rv','cn','Client','20%')}${sh('rv','date','Date','11%')}<th style="width:7%">Time</th>${sh('rv','type','Type','14%')}${sh('rv','adviser','Adviser','13%')}${sh('rv','aum','AUM','9%')}${sh('rv','status','Status','9%')}${sh('rv','loc','Location','9%')}<th style="width:5%"></th></tr></thead>
-    <tbody>${filtered.map(rv=>`<tr onclick="oRev(${rv.id})">
-      <td><div class="flex" style="min-width:0"><div class="av" style="flex-shrink:0">${ini(rv.cn)}</div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${rv.cn}</span></div></td>
-      <td>${fd(rv.date)}</td><td>${rv.time||'--'}</td><td class="ellipsis">${rv.type}</td>
-      <td class="ellipsis" style="font-size:10px;color:var(--txt2)">${rv.adviser||'--'}</td>
-      <td>${fm(rv.aum)}</td>
-      <td><span class="badge ${sCls(rv.status)}">${rv.status}</span></td>
-      <td style="font-size:10px;color:var(--txt2)">${rv.loc||'--'}</td>
-      <td><button class="btn btn-sm" onclick="event.stopPropagation();oRev(${rv.id})">Open</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+  return mob()?
+  filtered.map(rv=>
+    '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="oRev('+rv.id+')">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+        '<div class="av" style="flex-shrink:0">'+ini(rv.cn)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+rv.cn+'</div>'+
+          '<div style="font-size:10px;color:var(--txt2)">'+rv.adviser+'</div>'+
+        '</div>'+
+        '<span class="badge '+sCls(rv.status)+'">'+rv.status+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">'+
+        '<div><span style="color:var(--txt2)">Date </span><strong>'+fd(rv.date)+'</strong></div>'+
+        '<div><span style="color:var(--txt2)">Time </span>'+(rv.time||'--')+'</div>'+
+        '<div><span style="color:var(--txt2)">Type </span>'+rv.type+'</div>'+
+        '<div><span style="color:var(--txt2)">Location </span>'+(rv.loc||'--')+'</div>'+
+        '<div><span style="color:var(--txt2)">AUM </span>'+fm(rv.aum)+'</div>'+
+      '</div>'+
+    '</div>'
+  ).join(''):
+  '<div class="tw"><table>'+
+  '<thead><tr>'+sh('rv','cn','Client','20%')+sh('rv','date','Date','11%')+'<th style="width:7%">Time</th>'+sh('rv','type','Type','14%')+sh('rv','adviser','Adviser','13%')+sh('rv','aum','AUM','9%')+sh('rv','status','Status','9%')+sh('rv','loc','Location','9%')+'<th style="width:5%"></th></tr></thead>'+
+  '<tbody>'+filtered.map(rv=>
+    '<tr onclick="oRev('+rv.id+')">'+
+      '<td><div class="flex" style="min-width:0"><div class="av" style="flex-shrink:0">'+ini(rv.cn)+'</div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">'+rv.cn+'</span></div></td>'+
+      '<td>'+fd(rv.date)+'</td><td>'+(rv.time||'--')+'</td><td class="ellipsis">'+rv.type+'</td>'+
+      '<td class="ellipsis" style="font-size:10px;color:var(--txt2)">'+(rv.adviser||'--')+'</td>'+
+      '<td>'+fm(rv.aum)+'</td>'+
+      '<td><span class="badge '+sCls(rv.status)+'">'+rv.status+'</span></td>'+
+      '<td style="font-size:10px;color:var(--txt2)">'+(rv.loc||'--')+'</td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();oRev('+rv.id+')">Open</button></td>'+
+    '</tr>').join('')+
+  '</tbody></table></div>';
 }
 function oSched(cid,ds){
   const opts=db.cl.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${fnd(c)}</option>`).join('');
@@ -1851,17 +1915,34 @@ function pgPols(){
     <div class="sc"><div class="sl">Total value</div><div class="sv" style="font-size:14px">${fm(tv)}</div></div>
     <div class="sc"><div class="sl">Monthly contribs</div><div class="sv" style="font-size:13px">${fm(all.reduce((s,p)=>s+(p.monthlyContrib||0),0))}</div></div>
   </div>
-  <div class="tw"><table>
-    <thead><tr>${sh('pols','cn','Client','18%')}${sh('pols','type','Type','13%')}${sh('pols','provider','Provider','12%')}<th style="width:10%">Plan no.</th>${sh('pols','value','Value','9%')}${sh('pols','monthlyContrib','Monthly','8%')}${sh('pols','planStatus','Status','10%')}<th style="width:12%">Beneficiaries</th><th style="width:5%"></th></tr></thead>
-    <tbody>${all.slice(0,120).map(p=>`<tr onclick="nav('cd',${p.cid})">
-      <td class="ellipsis">${p.cn}</td><td class="ellipsis">${p.type}</td><td class="ellipsis">${p.provider}</td>
-      <td style="font-family:var(--mono);font-size:10px">${p.planNumber}</td>
-      <td>${p.value?fm(p.value):'--'}</td><td>${p.monthlyContrib?fm(p.monthlyContrib):'--'}</td>
-      <td><span class="badge ${['In Force','Active'].includes(p.planStatus)?'bg':'ba'}">${p.planStatus||'--'}</span></td>
-      <td class="ellipsis" style="font-size:10px;color:var(--txt2)">${p.beneficiaries||'--'}</td>
-      <td><button class="btn btn-sm" onclick="event.stopPropagation();nav('cd',${p.cid})">Go</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+  ${mob()?all.slice(0,120).map(p=>
+    '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'cd\','+p.cid+')">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+        '<div style="min-width:0">'+
+          '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.cn+'</div>'+
+          '<div style="font-size:10px;color:var(--txt2)">'+p.type+' &bull; '+p.provider+'</div>'+
+        '</div>'+
+        '<span class="badge '+((['In Force','Active'].includes(p.planStatus))?'bg':'ba')+'">'+( p.planStatus||'--')+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">'+
+        '<div><span style="color:var(--txt2)">Value </span><strong>'+(p.value?fm(p.value):'--')+'</strong></div>'+
+        '<div><span style="color:var(--txt2)">Monthly </span>'+(p.monthlyContrib?fm(p.monthlyContrib):'--')+'</div>'+
+        '<div><span style="color:var(--txt2)">Plan no. </span><span style="font-family:var(--mono);font-size:10px">'+p.planNumber+'</span></div>'+
+      '</div>'+
+    '</div>').join('')
+  :
+  '<div class="tw"><table>'+
+  '<thead><tr>'+sh('pols','cn','Client','18%')+sh('pols','type','Type','13%')+sh('pols','provider','Provider','12%')+'<th style="width:10%">Plan no.</th>'+sh('pols','value','Value','9%')+sh('pols','monthlyContrib','Monthly','8%')+sh('pols','planStatus','Status','10%')+'<th style="width:12%">Beneficiaries</th><th style="width:5%"></th></tr></thead>'+
+  '<tbody>'+all.slice(0,120).map(p=>
+    '<tr onclick="nav(\'cd\','+p.cid+')">'+
+      '<td class="ellipsis">'+p.cn+'</td><td class="ellipsis">'+p.type+'</td><td class="ellipsis">'+p.provider+'</td>'+
+      '<td style="font-family:var(--mono);font-size:10px">'+p.planNumber+'</td>'+
+      '<td>'+(p.value?fm(p.value):'--')+'</td><td>'+(p.monthlyContrib?fm(p.monthlyContrib):'--')+'</td>'+
+      '<td><span class="badge '+((['In Force','Active'].includes(p.planStatus))?'bg':'ba')+'">'+(p.planStatus||'--')+'</span></td>'+
+      '<td class="ellipsis" style="font-size:10px;color:var(--txt2)">'+(p.beneficiaries||'--')+'</td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+p.cid+')">Go</button></td>'+
+    '</tr>').join('')+
+  '</tbody></table></div>'}`;
 }
 function pgFees(){
   const adf=afl();
@@ -1875,15 +1956,32 @@ function pgFees(){
     <div class="sc"><div class="sl">Active</div><div class="sv">${all.filter(f=>f.status==='Active').length}</div></div>
     <div class="sc"><div class="sl">Avg per client</div><div class="sv" style="font-size:14px">${nc>0?fm(Math.round(ta/nc)):'--'}</div></div>
   </div>
-  <div class="tw"><table>
-    <thead><tr>${sh('fees','cn','Client','20%')}${sh('fees','type','Type','11%')}<th style="width:22%">Description</th><th style="width:7%">%</th>${sh('fees','amount','Amount','10%')}${sh('fees','frequency','Frequency','11%')}${sh('fees','status','Status','8%')}<th style="width:5%"></th></tr></thead>
-    <tbody>${all.map(f=>`<tr onclick="nav('cd',${f.cid})">
-      <td class="ellipsis">${f.cn}</td><td>${f.type}</td><td class="ellipsis">${f.description}</td>
-      <td>${f.percent?f.percent+'%':'--'}</td><td>${fm(f.amount)}</td><td>${f.frequency}</td>
-      <td><span class="badge ${f.status==='Active'?'bg':'ba'}">${f.status}</span></td>
-      <td><button class="btn btn-sm" onclick="event.stopPropagation();nav('cd',${f.cid})">Go</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+  ${mob()?all.map(f=>
+    '<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav(\'cd\','+f.cid+')">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+        '<div style="min-width:0">'+
+          '<div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.cn+'</div>'+
+          '<div style="font-size:10px;color:var(--txt2)">'+f.type+(f.description?' &bull; '+f.description:'')+'</div>'+
+        '</div>'+
+        '<span class="badge '+(f.status==='Active'?'bg':'ba')+'">'+f.status+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">'+
+        '<div><span style="color:var(--txt2)">Amount </span><strong>'+fm(f.amount)+'</strong></div>'+
+        '<div><span style="color:var(--txt2)">Frequency </span>'+f.frequency+'</div>'+
+        (f.percent?'<div><span style="color:var(--txt2)">Rate </span>'+f.percent+'%</div>':'')+
+      '</div>'+
+    '</div>').join('')
+  :
+  '<div class="tw"><table>'+
+  '<thead><tr>'+sh('fees','cn','Client','20%')+sh('fees','type','Type','11%')+'<th style="width:22%">Description</th><th style="width:7%">%</th>'+sh('fees','amount','Amount','10%')+sh('fees','frequency','Frequency','11%')+sh('fees','status','Status','8%')+'<th style="width:5%"></th></tr></thead>'+
+  '<tbody>'+all.map(f=>
+    '<tr onclick="nav(\'cd\','+f.cid+')">'+
+      '<td class="ellipsis">'+f.cn+'</td><td>'+f.type+'</td><td class="ellipsis">'+f.description+'</td>'+
+      '<td>'+(f.percent?f.percent+'%':'--')+'</td><td>'+fm(f.amount)+'</td><td>'+f.frequency+'</td>'+
+      '<td><span class="badge '+(f.status==='Active'?'bg':'ba')+'">'+f.status+'</span></td>'+
+      '<td><button class="btn btn-sm" onclick="event.stopPropagation();nav(\'cd\','+f.cid+')">Go</button></td>'+
+    '</tr>').join('')+
+  '</tbody></table></div>'}`;
 }
 function pgDashboard(){
   const adf=afl();
@@ -2038,22 +2136,40 @@ function pgTasks(){
     <div class="sc"><div class="sl">Due this week</div><div class="sv" style="${due7>0?'color:var(--amber-txt)':''}">${due7}</div></div>
   </div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-p btn-sm" onclick="oTask()">+ New task</button></div>
-  <div class="tw"><table>
-    <thead><tr><th style="width:4%"></th>${sh('tk','cn','Client','20%')}${sh('tk','title','Task','24%')}${sh('tk','category','Category','11%')}${sh('tk','priority','Priority','9%')}${sh('tk','adviser','Adviser','12%')}${sh('tk','due','Due','10%')}<th style="width:7%"></th></tr></thead>
-    <tbody>${tasks.map(t=>{
-      const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
-      const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
-      return`<tr style="${t.done?'opacity:.5':''}">
-        <td><input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="cursor:pointer;accent-color:var(--green)"></td>
-        <td><div class="flex"><div class="av">${ini(t.cn)}</div><span class="ellipsis" style="cursor:pointer;color:var(--navy)" onclick="nav('cd',${t.cid})">${t.cn}</span></div></td>
-        <td style="font-weight:${t.done?'400':'500'}">${t.title}</td>
-        <td style="font-size:10px;color:var(--txt2)">${t.category}</td>
-        <td><span class="badge ${pc}">${t.priority}</span></td>
-        <td style="font-size:10px;color:var(--txt2)">${t.adviser||'--'}</td>
-        <td style="font-size:11px;${isOv?'color:var(--red-txt);font-weight:500':'color:var(--txt2)'}">${fd(t.due)}</td>
-        <td><button class="btn btn-sm" onclick="oTask(${t.id})">Edit</button></td>
-      </tr>`;}).join('')}</tbody>
-  </table></div>`;
+  ${mob()?tasks.map(t=>{
+    const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
+    const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
+    return'<div class="card" style="margin-bottom:8px;'+(t.done?'opacity:.55':'')+'">'+
+      '<div style="display:flex;align-items:flex-start;gap:9px">'+
+        '<input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleTask('+t.id+')" style="margin-top:3px;cursor:pointer;accent-color:var(--green);width:16px;height:16px;flex-shrink:0">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:500;font-size:13px;'+(t.done?'text-decoration:line-through;color:var(--txt2)':'')+'">'+t.title+'</div>'+
+          '<div style="font-size:11px;color:var(--navy);margin-top:1px;cursor:pointer" onclick="nav(\'cd\','+t.cid+')">'+t.cn+'</div>'+
+          '<div style="font-size:10px;color:'+(isOv?'var(--red-txt)':'var(--txt2)')+';margin-top:2px">'+t.category+' &bull; Due '+fd(t.due)+'</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'+
+          '<span class="badge '+pc+'">'+t.priority+'</span>'+
+          '<button class="btn btn-sm" onclick="oTask('+t.id+')">Edit</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';}).join('')
+  :
+  '<div class="tw"><table>'+
+  '<thead><tr><th style="width:4%"></th>'+sh('tk','cn','Client','20%')+sh('tk','title','Task','24%')+sh('tk','category','Category','11%')+sh('tk','priority','Priority','9%')+sh('tk','adviser','Adviser','12%')+sh('tk','due','Due','10%')+'<th style="width:7%"></th></tr></thead>'+
+  '<tbody>'+tasks.map(t=>{
+    const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
+    const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
+    return'<tr style="'+(t.done?'opacity:.5':'')+'">'+
+      '<td><input type="checkbox" '+(t.done?'checked':'')+' onchange="toggleTask('+t.id+')" style="cursor:pointer;accent-color:var(--green)"></td>'+
+      '<td><div class="flex"><div class="av">'+ini(t.cn)+'</div><span class="ellipsis" style="cursor:pointer;color:var(--navy)" onclick="nav(\'cd\','+t.cid+')">'+t.cn+'</span></div></td>'+
+      '<td style="font-weight:'+(t.done?'400':'500')+'">'+t.title+'</td>'+
+      '<td style="font-size:10px;color:var(--txt2)">'+t.category+'</td>'+
+      '<td><span class="badge '+pc+'">'+t.priority+'</span></td>'+
+      '<td style="font-size:10px;color:var(--txt2)">'+(t.adviser||'--')+'</td>'+
+      '<td style="font-size:11px;'+(isOv?'color:var(--red-txt);font-weight:500':'color:var(--txt2)')+'">'+fd(t.due)+'</td>'+
+      '<td><button class="btn btn-sm" onclick="oTask('+t.id+')">Edit</button></td>'+
+    '</tr>';}).join('')+
+  '</tbody></table></div>'}`;
 }
 function tTasks(client){
   const tasks=db.tk.filter(t=>t.cid===client.id).sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;return a.due.localeCompare(b.due);});
