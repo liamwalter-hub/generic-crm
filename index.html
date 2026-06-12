@@ -957,6 +957,9 @@ function rV(){
   else if(vw==='feeledger')el.innerHTML=pgFeeLedger();
   else if(vw==='export')el.innerHTML=pgExp();
   else if(vw==='approvals')el.innerHTML=pgApprovals();
+  // Spacer so last item is never hidden behind the mobile nav bar
+  el.innerHTML+='<div style="height:80px;flex-shrink:0" aria-hidden="true"></div>';
+  el.scrollTop=0;
 }
 function pgExp(){
   const adf=afl();
