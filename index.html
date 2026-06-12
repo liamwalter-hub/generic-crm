@@ -490,28 +490,35 @@ const DOC_STATUS=['Received','Outstanding','Not required','Expired'];
 const RISK_EXP=['None','Limited','Moderate','Extensive'];
 const AUTH_SK='nexus_auth';
 const USERS=[
-  {id:'admin',name:'Administrator',role:'admin',pin:'1234'},
+  {id:'admin',name:'Administrator',role:'management',pin:'1234'},
   {id:'emma.clarke',name:'Emma Clarke',role:'adviser',adviser:'Emma Clarke',pin:'1234'},
   {id:'james.morgan',name:'James Morgan',role:'adviser',adviser:'James Morgan',pin:'1234'},
   {id:'rachel.patel',name:'Rachel Patel',role:'adviser',adviser:'Rachel Patel',pin:'1234'},
+  {id:'admin.user',name:'Admin User',role:'administrator',pin:'1234'},
+  {id:'paraplanner.user',name:'Paraplanner User',role:'paraplanner',pin:'1234'},
 ];
 let _session=null; // {user, viewAs}
 function lAuth(){try{const s=localStorage.getItem(AUTH_SK);if(s){_session=JSON.parse(s);return true;}}catch(e){}return false;}
 function sAuth(){try{localStorage.setItem(AUTH_SK,JSON.stringify(_session));}catch(e){}}
-function logout(){if(_session)logAudit('LOGOUT','client',(_session.user.name)+' signed out',null);_session=null;localStorage.removeItem(AUTH_SK);showLogin();}
-function isAdmin(){return _session&&_session.user.role==='admin';}
+function logout(){if(_session)logAudit('LOGOUT','client',(_session.user.name)+' signed out',null);_session=null;_taskRoleFilter='All';localStorage.removeItem(AUTH_SK);showLogin();}
+function isManagement(){return _session&&_session.user.role==='management';}
+function isAdmin(){return isManagement();}
+function isStaff(){return _session&&['management','administrator','paraplanner'].includes(_session.user.role);}
+function roleLabel(role){return {management:'Management',administrator:'Administrator',paraplanner:'Paraplanner',adviser:'Adviser'}[role]||role;}
 function curAdviser(){
   if(!_session)return null;
   if(_session.viewAs)return _session.viewAs;
   if(_session.user.role==='adviser')return _session.user.adviser;
-  return null; // admin seeing all
+  return null;
 }
 function canSee(adviserField){
   const ca=curAdviser();
-  if(!ca)return true; // admin, no viewAs
+  if(!ca)return true;
   return adviserField===ca;
 }
 let _sort={key:null,dir:1,tbl:null};
+let _taskRoleFilter='All';
+function setTaskRoleFilter(r){_taskRoleFilter=r;rV();}
 let _cfScenario='base';
 function sScenario(s){_cfScenario=s;sTab('cashflow');}
 function sortBy(tbl,key){
@@ -542,8 +549,9 @@ const FEE_FREQ=['Monthly','Quarterly','Annual','One-off'];
 const FEE_PAY=['Deducted from plan','Direct debit','Invoice'];
 const WTYPES=['UFPLS','PCLS','PCLS + income','Flexi-access drawdown','Regular income','Partial withdrawal - undesignated','Full encashment','Ad hoc lump sum','Other'];
 const CTYPES=['Employee contribution','Employer contribution','One-off lump sum','Transfer in','Third party contribution'];
-const TASK_CATS=['General admin','Client communication','Review prep','Compliance','Provider chase','New business','Other'];
+const TASK_CATS=['General admin','Client communication','Review prep','Compliance','Provider chase','New business','Suitability report','Review pack','Paraplan request','Other'];
 const TASK_PRIS=['High','Medium','Low'];
+const STAFF_ROLES=['Adviser','Administrator','Paraplanner'];
 const FLOW_TYPES=['Employee contribution','Employer contribution','One-off lump sum','Transfer in','Regular income drawdown','UFPLS','PCLS','PCLS + income','Partial withdrawal','Full encashment','Transfer out','Ad hoc withdrawal','Bed & ISA','Bed & Pension','Other in','Other out'];
 const FLOW_IN=['Employee contribution','Employer contribution','One-off lump sum','Transfer in','Other in'];
 const FLOW_FREQ=['Monthly','Quarterly','Annual','One-off'];
@@ -583,19 +591,15 @@ const PRV=['Aviva','Legal & General','Royal London','Scottish Widows','Standard 
 const TWN=['Birmingham','Solihull','Coventry','Sutton Coldfield','Wolverhampton','Derby','Nottingham','Leicester','Stratford-upon-Avon','Tamworth'];
 const STR=['Oak Road','Elm Lane','Maple Close','Rose Avenue','High Street','Church Drive','Park Way','Mill Lane','Green Close','Hill Road'];
 function r(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-function pk(a){return a[r(0,a.length-1)];  // Seed transaction flows
-  db.cl.slice(0,40).forEach(tc=>{
-    const pens=(tc.pols||[]).filter(p=>['Pension','SIPP','Drawdown'].includes(p.type));
-    const isas=(tc.pols||[]).filter(p=>p.type.includes('ISA'));
-    const ay=r(2020,2023);
-    if(pens.length){
-      db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'Employee contribution',amount:r(200,1500),frequency:'Monthly',startDate:ay+'-'+p2(r(1,6))+'-01',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
-      if(Math.random()>.5)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'Employer contribution',amount:r(100,800),frequency:'Monthly',startDate:ay+'-'+p2(r(1,6))+'-01',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
-      if(Math.random()>.6)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'One-off lump sum',amount:r(5,50)*1000,frequency:'One-off',startDate:(ay+1)+'-'+p2(r(1,12))+'-'+p2(r(1,28)),endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
-      if(tc.employment==='Retired'||Math.random()>.7)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'out',type:'Regular income drawdown',amount:r(500,3000),frequency:'Monthly',startDate:(ay+1)+'-04-06',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
-    }
-    if(isas.length&&Math.random()>.4)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:isas[0].id,polType:isas[0].type,provider:isas[0].provider,direction:'in',type:'One-off lump sum',amount:r(1,20)*1000,frequency:'One-off',startDate:(ay+1)+'-04-'+p2(r(6,30)),endDate:'',notes:'Annual ISA subscription',created:now.toISOString().slice(0,10),adviser:tc.adviser});
-  });
+function pk(a){return a[r(0,a.length-1)];}
+// Seeded PRNG (mulberry32) — keeps demo data identical every time buildDb runs
+function mulberry32(seed){
+  return function(){
+    seed|=0;seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
 }
 function p2(n){return String(n).padStart(2,'0');}function pad(n){return p2(n);}
 function fnd(c){return c.title+' '+c.firstName+' '+c.lastName;}
@@ -835,6 +839,8 @@ function genR(c,off){
   return{id:db.ri++,cid:c.id,cn:fnd(c),adviser:c.adviser,date:ds,time:pk(['09:00','09:30','10:00','10:30','11:00','14:00','14:30','15:00']),type:'Annual review',loc:pk(['Office','Video call','Phone call',"Client's home"]),status:st,notes:'',cl:CHL.map(t=>({t,done:st==='Completed'})),outcome:st==='Completed'?'Review completed. Suitability confirmed. Report issued.':'',nextDate:'',aum};
 }
 function buildDb(){
+  const _rand=Math.random;
+  Math.random=mulberry32(0xDEADBEEF);
   db={cl:[],ld:[],rv:[],hh:[],tk:[],fl:[],fe:[],nl:[],au:[],pa:[],ni:101,li:21,ri:1,hi:1,ti:1,fli:1,fei:1,nli:1};
   for(let i=1;i<=100;i++){const cl=genC(i);(cl.flows||[]).forEach(f=>{db.fl.push({...f,id:db.fli++});});delete cl.flows;(cl.feeLedger||[]).forEach(fe=>{db.fe.push({...fe,id:db.fei++});});delete cl.feeLedger;(cl.commLog||[]).forEach(n=>{db.nl.push({...n,id:db.nli++});});delete cl.commLog;db.cl.push(cl);}
   for(let i=1;i<=20;i++)db.ld.push(genL(i));
@@ -855,13 +861,40 @@ function buildDb(){
     const due=new Date(now);due.setDate(due.getDate()+r(-10,30));
     db.tk.push({id:db.ti++,cid:tc.id,cn:fnd(tc),title:pk(['Send valuation to client','Chase provider for policy docs','Book annual review meeting','Update fact find','Send annual statement','Check pension contributions','Confirm LOA received','Email client re: tax year end','Request death certificate','Update beneficiary nomination']),category:pk(TASK_CATS),priority:pk(TASK_PRIS),due:due.toISOString().slice(0,10),done:Math.random()>.6,notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
   });
+  // Seed transaction flows
+  db.cl.slice(0,40).forEach(tc=>{
+    const pens=(tc.pols||[]).filter(p=>['Pension','SIPP','Drawdown'].includes(p.type));
+    const isas=(tc.pols||[]).filter(p=>p.type.includes('ISA'));
+    const ay=r(2020,2023);
+    if(pens.length){
+      db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'Employee contribution',amount:r(200,1500),frequency:'Monthly',startDate:ay+'-'+p2(r(1,6))+'-01',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
+      if(Math.random()>.5)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'Employer contribution',amount:r(100,800),frequency:'Monthly',startDate:ay+'-'+p2(r(1,6))+'-01',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
+      if(Math.random()>.6)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'in',type:'One-off lump sum',amount:r(5,50)*1000,frequency:'One-off',startDate:(ay+1)+'-'+p2(r(1,12))+'-'+p2(r(1,28)),endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
+      if(tc.employment==='Retired'||Math.random()>.7)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:pens[0].id,polType:pens[0].type,provider:pens[0].provider,direction:'out',type:'Regular income drawdown',amount:r(500,3000),frequency:'Monthly',startDate:(ay+1)+'-04-06',endDate:'',notes:'',created:now.toISOString().slice(0,10),adviser:tc.adviser});
+    }
+    if(isas.length&&Math.random()>.4)db.fl.push({id:db.fli++,cid:tc.id,cn:fnd(tc),polId:isas[0].id,polType:isas[0].type,provider:isas[0].provider,direction:'in',type:'One-off lump sum',amount:r(1,20)*1000,frequency:'One-off',startDate:(ay+1)+'-04-'+p2(r(6,30)),endDate:'',notes:'Annual ISA subscription',created:now.toISOString().slice(0,10),adviser:tc.adviser});
+  });
+  Math.random=_rand; // restore native random after seeded generation
 }
 function sDb(){try{localStorage.setItem(SK,JSON.stringify(db));}catch(e){}}
-function lDb(){try{const s=localStorage.getItem(SK);if(s){db=JSON.parse(s);
-  // Ensure all arrays exist even if loaded from older schema
-  db.fl=db.fl||[];db.hh=db.hh||[];db.tk=db.tk||[];db.fe=db.fe||[];db.fei=db.fei||1;db.nl=db.nl||[];db.nli=db.nli||1;db.au=db.au||[];db.pa=db.pa||[];
-  db.fli=db.fli||1;db.hi=db.hi||1;db.ti=db.ti||1;
-  return true;}}catch(e){}return false;}
+function lDb(){
+  try{
+    const s=localStorage.getItem(SK);
+    if(s){
+      const parsed=JSON.parse(s);
+      // Only accept if it has actual client data — reject empty/corrupted saves
+      if(parsed&&parsed.cl&&parsed.cl.length>0){
+        db=parsed;
+        db.fl=db.fl||[];db.hh=db.hh||[];db.tk=db.tk||[];db.fe=db.fe||[];db.fei=db.fei||1;db.nl=db.nl||[];db.nli=db.nli||1;db.au=db.au||[];db.pa=db.pa||[];
+        db.fli=db.fli||1;db.hi=db.hi||1;db.ti=db.ti||1;
+        return true;
+      }
+    }
+  }catch(e){}
+  // localStorage blocked or empty — use in-memory db if already populated
+  if(db&&db.cl&&db.cl.length>0)return true;
+  return false;
+}
 
 function logAudit(action,type,desc,opts){
   if(!db.au)db.au=[];
@@ -901,7 +934,7 @@ function nav(v,id){
   document.getElementById('cal-nav').style.display=v==='cal'?'flex':'none';
   document.getElementById('sw').style.display=['clients','leads'].includes(v)?'flex':'none';
   const showAf=['clients','leads','cal','revs','upcoming','overdue','policies','fees','reports','tasks','households','flows','feeledger','investments'].includes(v)&&v!=='audit';
-  document.getElementById('af').style.display=showAf&&isAdmin()?'':'none';
+  document.getElementById('af').style.display=showAf&&isManagement()?'':'none';
   const cta=document.getElementById('cta'),cl=document.getElementById('cta-lbl');
   if(v==='leads'){cl.textContent='+ New lead';cta.onclick=()=>oAddLead();}
   else{cl.textContent='+ New client';cta.onclick=()=>nav('add');}
@@ -952,7 +985,7 @@ function rV(){
   else if(vw==='households')el.innerHTML=pgHouseholds();
   else if(vw==='hd')el.innerHTML=pgHD();
   else if(vw==='investments')el.innerHTML=pgInvestments();
-  else if(vw==='audit'){if(!isAdmin()){el.innerHTML='<div class="empty">Access denied.</div>';}else{el.innerHTML=pgAudit();}}
+  else if(vw==='audit'){if(!isManagement()){el.innerHTML='<div class="empty">Access denied — management only.</div>';}else{el.innerHTML=pgAudit();}}
   else if(vw==='flows')el.innerHTML=pgFlows();
   else if(vw==='feeledger')el.innerHTML=pgFeeLedger();
   else if(vw==='export')el.innerHTML=pgExp();
@@ -1001,7 +1034,7 @@ function pgExp(){
       <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">${db.au.length} audit entries</div>
       <button class="btn btn-sm btn-s" onclick="exportAudit()">&#x2B07; Download CSV</button>
     </div>
-    ${isAdmin()?`<div class="card" style="grid-column:1/-1">
+    ${isManagement()?`<div class="card" style="grid-column:1/-1">
       <div style="font-size:12px;font-weight:600;margin-bottom:4px">Full database backup</div>
       <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">Complete JSON export of all CRM data. Keep this safe — it contains all client information.</div>
       <button class="btn btn-sm btn-d" onclick="expFullDb()">&#x2B07; Download JSON backup</button>
@@ -1071,7 +1104,7 @@ function expTasks(){
   const a=document.createElement('a');a.href=u;a.download='tasks.csv';a.click();URL.revokeObjectURL(u);toast('Downloaded tasks.csv');
 }
 function expFullDb(){
-  if(!isAdmin()){toast('Admin only','err');return;}
+  if(!isManagement()){toast('Management only','err');return;}
   const json=JSON.stringify(db,null,2);
   const b=new Blob([json],{type:'application/json'});const u=URL.createObjectURL(b);
   const a=document.createElement('a');a.href=u;a.download='bespoke_crm_backup_'+now.toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
@@ -1644,12 +1677,15 @@ function rCC(cid,cs){
   if(cs.loa)flags.push('<span class="badge bt">LOA</span>');
   if(cs.bankVerified===true)flags.push('<span class="badge bg">Bank verified</span>');
   if(cs.bankVerified===false)flags.push('<span class="badge br">Bank unverified</span>');
+  // Check if any task is linked to this case
+  const linkedTask=db.tk.find(t=>t.cid===cid&&t.caseId===cs.id);
   return`<div class="card" style="margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px">
       <div>
         <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap">
           <span class="badge ${cCls(cs.category)}">${cs.category}</span>
           <span class="badge ${sCls(cs.status)}">${cs.status}</span>
+          ${linkedTask?'<span class="badge bb" style="font-size:9px">&#128221; SR task assigned</span>':''}
         </div>
         <div style="font-size:10px;color:var(--txt2)">${cs.adviceType||''}${cs.adviser?' &bull; '+cs.adviser:''} &bull; ${fd(cs.date)}</div>
       </div>
@@ -1659,11 +1695,18 @@ function rCC(cid,cs){
       </div>
     </div>
     ${flags.length>0?'<div class="flags">'+flags.join('')+'</div>':''}
+    ${cs.srBrief?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px;margin:8px 0;font-size:11px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt2);margin-bottom:4px">Basis of advice / paraplanner brief</div>${cs.srBrief}</div>`:''}
+    ${cs.riskProfile?'<div class="dr"><span class="dlabel">Risk profile</span><span>'+cs.riskProfile+'</span></div>':''}
+    ${cs.product?'<div class="dr"><span class="dlabel">Recommended product</span><span>'+cs.product+'</span></div>':''}
+    ${cs.amount?'<div class="dr"><span class="dlabel">Approx. investment</span><span>'+fm(cs.amount)+'</span></div>':''}
+    ${cs.provider?'<div class="dr"><span class="dlabel">Provider</span><span>'+cs.provider+'</span></div>':''}
+    ${cs.docsRequired?'<div class="dr"><span class="dlabel">Docs required</span><span style="font-size:10px;color:var(--txt2)">'+cs.docsRequired+'</span></div>':''}
+    ${cs.targetDate?'<div class="dr"><span class="dlabel">Target completion</span><span>'+fd(cs.targetDate)+'</span></div>':''}
     ${cs.outcome?'<div class="dr"><span class="dlabel">Outcome</span><span>'+cs.outcome+'</span></div>':''}
     ${cs.wType&&cs.category==='Withdrawal'?'<div class="dr"><span class="dlabel">Withdrawal type</span><span>'+cs.wType+(cs.wGross?' &bull; Gross: '+fm(cs.wGross):'')+(cs.wTaxFree?' &bull; Tax-free: '+fm(cs.wTaxFree):'')+'</span></div>':''}
     ${cs.wHMRC?'<div class="dr"><span class="dlabel">HMRC notification</span><span><span class="badge br">Required</span></span></div>':''}
     ${cs.providerRef?'<div class="dr"><span class="dlabel">Provider ref</span><span style="font-family:var(--mono);font-size:10px">'+cs.providerRef+'</span></div>':''}
-    ${cs.notes?'<p style="font-size:10px;color:var(--txt2);margin-top:6px">'+cs.notes+'</p>':''}
+    ${cs.notes&&!cs.srBrief?'<p style="font-size:10px;color:var(--txt2);margin-top:6px">'+cs.notes+'</p>':''}
   </div>`;
 }
 function oCase(cid,csid){
@@ -2130,7 +2173,11 @@ function pgRep(){return pgDashboard();}
 
 function pgTasks(){
   const adf=afl();
-  let tasks=db.tk.filter(t=>!adf||t.adviser===adf);
+  // Default role filter to the user's own role for administrator/paraplanner
+  const userRole=_session?.user?.role;
+  const defaultFilter=userRole==='administrator'?'Administrator':userRole==='paraplanner'?'Paraplanner':'All';
+  const roleFilter=_taskRoleFilter||defaultFilter;
+  let tasks=db.tk.filter(t=>(!adf||t.adviser===adf)&&(roleFilter==='All'||(t.assignedRole||'Adviser')===roleFilter));
   if(_sort.tbl==='tk')tasks=sorted(tasks,'tk',(x,k)=>({priority:{High:0,Medium:1,Low:2}[x.priority]||1}[k]||x[k]));
   else tasks=tasks.sort((a,b)=>{
     const pd={High:0,Medium:1,Low:2};
@@ -2139,6 +2186,12 @@ function pgTasks(){
   });
   const overdue=tasks.filter(t=>!t.done&&t.due<now.toISOString().slice(0,10)).length;
   const due7=tasks.filter(t=>!t.done&&t.due>=now.toISOString().slice(0,10)&&t.due<=new Date(now.getTime()+7*864e5).toISOString().slice(0,10)).length;
+  const allTasks=db.tk.filter(t=>!adf||t.adviser===adf);
+  const roleTabHtml=['All'].concat(STAFF_ROLES).map(function(r){
+    var n=r==='All'?allTasks.length:allTasks.filter(function(t){return (t.assignedRole||'Adviser')===r;}).length;
+    var active=roleFilter===r;
+    return '<button onclick="setTaskRoleFilter(this.getAttribute(\'data-r\'))" data-r="'+r+'" style="padding:5px 12px;border:1px solid '+(active?'var(--navy)':'var(--bdr2)')+';border-radius:20px;font-size:11px;cursor:pointer;background:'+(active?'var(--navy)':'var(--bg)')+';color:'+(active?'#fff':'var(--txt2)')+';font-family:var(--font-ui)">'+r+' ('+n+')</button>';
+  }).join(' ');
   const mobCards=tasks.map(t=>{
     const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
     const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
@@ -2148,16 +2201,17 @@ function pgTasks(){
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:13px;${t.done?'text-decoration:line-through;color:var(--txt2)':''}">${t.title}</div>
           <div style="font-size:11px;color:var(--navy);margin-top:1px;cursor:pointer" onclick="nav('cd',${t.cid})">${t.cn}</div>
-          <div style="font-size:10px;color:${isOv?'var(--red-txt)':'var(--txt2)'};margin-top:2px">${t.category} &bull; Due ${fd(t.due)}</div>
+          <div style="font-size:10px;color:${isOv?'var(--red-txt)':'var(--txt2)'};margin-top:2px">${t.category} &bull; Due ${fd(t.due)}${t.caseId?' &bull; <span class="badge bb" style="font-size:9px">&#128221; Case linked</span>':''}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
           <span class="badge ${pc}">${t.priority}</span>
+          ${(t.assignedRole&&t.assignedRole!=='Adviser')?'<span class="badge bb" style="font-size:9px">'+t.assignedRole+'</span>':''}
           <button class="btn btn-sm" onclick="oTask(${t.id})">Edit</button>
         </div>
       </div>
     </div>`;}).join('');
   const deskTable=`<div class="tw"><table>
-    <thead><tr><th style="width:4%"></th>${sh('tk','cn','Client','20%')}${sh('tk','title','Task','24%')}${sh('tk','category','Category','11%')}${sh('tk','priority','Priority','9%')}${sh('tk','adviser','Adviser','12%')}${sh('tk','due','Due','10%')}<th style="width:7%"></th></tr></thead>
+    <thead><tr><th style="width:4%"></th>${sh('tk','cn','Client','18%')}${sh('tk','title','Task','20%')}${sh('tk','category','Category','10%')}${sh('tk','priority','Priority','8%')}${sh('tk','adviser','Adviser','11%')}<th style="width:10%">Assigned to</th>${sh('tk','due','Due','9%')}<th style="width:7%"></th></tr></thead>
     <tbody>${tasks.map(t=>{
       const isOv=!t.done&&t.due<now.toISOString().slice(0,10);
       const pc={High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk';
@@ -2168,6 +2222,7 @@ function pgTasks(){
         <td style="font-size:10px;color:var(--txt2)">${t.category}</td>
         <td><span class="badge ${pc}">${t.priority}</span></td>
         <td style="font-size:10px;color:var(--txt2)">${t.adviser||'--'}</td>
+        <td><span class="badge ${{Administrator:'ba',Paraplanner:'bb'}[t.assignedRole||'']||'bk'}">${t.assignedRole||'Adviser'}</span></td>
         <td style="font-size:11px;${isOv?'color:var(--red-txt);font-weight:500':'color:var(--txt2)'}">${fd(t.due)}</td>
         <td><button class="btn btn-sm" onclick="oTask(${t.id})">Edit</button></td>
       </tr>`;}).join('')}</tbody>
@@ -2178,7 +2233,7 @@ function pgTasks(){
     <div class="sc"><div class="sl">Overdue</div><div class="sv" style="${overdue>0?'color:var(--red-txt)':''}">${overdue}</div></div>
     <div class="sc"><div class="sl">Due this week</div><div class="sv" style="${due7>0?'color:var(--amber-txt)':''}">${due7}</div></div>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-p btn-sm" onclick="oTask()">+ New task</button></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px"><div style="display:flex;gap:6px;flex-wrap:wrap">${roleTabHtml}</div><button class="btn btn-p btn-sm" onclick="oTask()">+ New task</button></div>
   <div class="mob-cards">${mobCards}</div>
   <div class="desk-table">${deskTable}</div>`;
 }
@@ -2194,7 +2249,7 @@ function tTasks(client){
         <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})" style="margin-top:2px;cursor:pointer;accent-color:var(--green);width:13px;height:13px;flex-shrink:0">
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:12px;${t.done?'text-decoration:line-through;color:var(--txt2)':''}">${t.title}</div>
-          <div style="font-size:10px;color:var(--txt2);margin-top:2px">${t.category} &bull; <span class="${isOv?'badge br':''}">Due ${fd(t.due)}</span></div>
+          <div style="font-size:10px;color:var(--txt2);margin-top:2px">${t.category} &bull; <span class="${isOv?'badge br':''}">Due ${fd(t.due)}</span>${(t.assignedRole&&t.assignedRole!=='Adviser')?' &bull; <span class="badge bb" style="font-size:9px">'+t.assignedRole+'</span>':''}${t.caseId?' &bull; <span class="badge bb" style="font-size:9px;cursor:pointer" onclick="sTab(\'service cases\')">&#128221; View case</span>':''}</div>
           ${t.notes?`<p style="font-size:10px;color:var(--txt2);margin-top:4px">${t.notes}</p>`:''}
         </div>
         <span class="badge ${pc}">${t.priority}</span>
@@ -2206,29 +2261,100 @@ function tTasks(client){
 function oTask(tid,preCid){
   const t=tid?db.tk.find(x=>x.id===tid):null;
   const cOpts=db.cl.map(cl=>`<option value="${cl.id}" ${(t?.cid||preCid)===cl.id?'selected':''}>${fnd(cl)}</option>`).join('');
+  const isSR=(t?.category==='Suitability report');
+  // If linked to an existing case, show it
+  const linkedCase=t?.caseId?(db.cl.find(x=>x.id===t.cid)?.cases||[]).find(cs=>cs.id===t.caseId):null;
+  const srSection=`<div id="tk_sr_wrap" style="display:${isSR?'block':'none'}">
+    <div class="sdiv" style="margin-top:4px">Service case details</div>
+    <div class="warn" style="margin-bottom:10px">&#128221; Completing this section will automatically create a linked service case on the client record when the task is saved.</div>
+    ${linkedCase?`<div class="warn" style="background:var(--green-bg);border-color:var(--green-bdr);color:var(--green-txt);margin-bottom:10px">&#10003; Linked to case: <strong>${linkedCase.category}</strong> (${linkedCase.status}) — <a href="#" onclick="event.preventDefault();closeM();sTab('service cases')" style="color:var(--green-txt)">view case</a></div>`:''}
+    <div class="g2">
+      <div class="field"><label>Case category *</label><select id="tk_sc_cat">${CCATS.map(c=>'<option '+(( linkedCase?.category||'Existing Client - New Business')===c?'selected':'')+'>'+c+'</option>').join('')}</select></div>
+      <div class="field"><label>Advice / transaction type</label><select id="tk_sc_at"><option>Pension</option><option>ISA</option><option>GIA</option><option>Bond</option><option>SIPP/Drawdown</option><option>Protection</option><option>Other</option></select></div>
+      <div class="field"><label>Target completion</label><input type="date" id="tk_sc_tgt" value="${linkedCase?.targetDate||''}"></div>
+      <div class="field"><label>Initial status</label><select id="tk_sc_st">${CSTS.map(s=>'<option '+(( linkedCase?.status||'Suitability Report')===s?'selected':'')+'>'+s+'</option>').join('')}</select></div>
+    </div>
+    <div class="g2">
+      <div class="field"><label>Risk profile (from fact find)</label><select id="tk_sc_risk"><option value="">-- select --</option>${['Cautious','Moderate','Moderately adventurous','Adventurous'].map(r=>'<option>'+r+'</option>').join('')}</select></div>
+      <div class="field"><label>Recommended product / wrapper</label><input id="tk_sc_prod" value="${linkedCase?.product||''}" placeholder="e.g. SIPP, S&S ISA, Bond"></div>
+      <div class="field"><label>Approximate investment (£)</label><input type="number" id="tk_sc_amt" value="${linkedCase?.amount||''}" placeholder=""></div>
+      <div class="field"><label>Provider</label><input id="tk_sc_prv" value="${linkedCase?.provider||''}" placeholder="e.g. Transact, Fidelity"></div>
+    </div>
+    <div class="field"><label>Basis of advice / key points for paraplanner</label><textarea id="tk_sc_notes" style="min-height:70px">${linkedCase?.srBrief||''}</textarea></div>
+    <div class="field"><label>Documents required from client</label><input id="tk_sc_docs" value="${linkedCase?.docsRequired||''}" placeholder="e.g. Latest pension statement, proof of income"></div>
+  </div>`;
   const html=`<div class="g2">
-    <div class="field" style="grid-column:1/-1"><label>Client *</label><select id="tk_c">${cOpts}</select></div>
+    <div class="field" style="grid-column:1/-1"><label>Client *</label><select id="tk_c" onchange="tkClientChange(this)">${cOpts}</select></div>
     <div class="field" style="grid-column:1/-1"><label>Task title *</label><input id="tk_ti" value="${t?.title||''}" placeholder="e.g. Send valuation to client"></div>
-    <div class="field"><label>Category</label><select id="tk_cat">${TASK_CATS.map(tc=>'<option '+(t?.category===tc?'selected':'')+'>'+tc+'</option>').join('')}</select></div>
+    <div class="field"><label>Category</label><select id="tk_cat" onchange="tkCatChange(this.value)">${TASK_CATS.map(tc=>'<option '+(t?.category===tc?'selected':'')+'>'+tc+'</option>').join('')}</select></div>
     <div class="field"><label>Priority</label><select id="tk_pri">${TASK_PRIS.map(tp=>'<option '+(t?.priority===tp?'selected':'')+'>'+tp+'</option>').join('')}</select></div>
     <div class="field"><label>Due date</label><input type="date" id="tk_due" value="${t?.due||''}"></div>
     <div class="field"><label>Adviser</label><select id="tk_adv">${ADV.map(a=>'<option '+(t?.adviser===a?'selected':'')+'>'+a+'</option>').join('')}</select></div>
+    <div class="field"><label>Assign to</label><select id="tk_role">${STAFF_ROLES.map(r=>'<option value="'+r+'" '+((t?.assignedRole||'Adviser')===r?'selected':'')+'>'+r+'</option>').join('')}</select></div>
     <div class="field"><label>Status</label><select id="tk_done"><option value="false" ${!t?.done?'selected':''}>Open</option><option value="true" ${t?.done?'selected':''}>Done</option></select></div>
   </div>
-  <div class="field"><label>Notes</label><textarea id="tk_no">${t?.notes||''}</textarea></div>`;
+  <div class="field"><label>Notes</label><textarea id="tk_no">${t?.notes||''}</textarea></div>
+  ${srSection}`;
   const ft=`${tid?`<button class="btn btn-d btn-sm" onclick="delTask(${tid})">Delete</button>`:''}
     <span style="flex:1"></span>
     <button class="btn" onclick="closeM()">Cancel</button>
     <button class="btn btn-p" onclick="saveTask(${tid||'null'})">Save task</button>`;
-  showM(tid?'Edit task':'New task',html,'',ft);
+  showM(tid?'Edit task':'New task',html,'',ft,'lg');
+}
+function tkCatChange(val){
+  const wrap=document.getElementById('tk_sr_wrap');
+  if(wrap)wrap.style.display=(val==='Suitability report')?'block':'none';
+}
+function tkClientChange(el){
+  // When client changes on a SR task, pre-fill risk profile from their fact find
+  const cid=parseInt(el.value);
+  const c=db.cl.find(x=>x.id===cid);if(!c)return;
+  const riskEl=document.getElementById('tk_sc_risk');
+  if(riskEl&&c.attNotes)riskEl.value=c.attNotes;
 }
 function saveTask(tid){
   if(!gv('tk_ti')){toast('Task title required','err');return;}
   const cid=parseInt(gv('tk_c'));const cl=db.cl.find(x=>x.id===cid);
-  const d={cid,cn:cl?fnd(cl):'',title:gv('tk_ti'),category:gv('tk_cat'),priority:gv('tk_pri'),due:gv('tk_due'),adviser:gv('tk_adv'),done:gv('tk_done')==='true',notes:gv('tk_no'),created:now.toISOString().slice(0,10)};
+  const cat=gv('tk_cat');
+  let caseId=tid&&tid!=='null'?db.tk.find(x=>x.id===tid)?.caseId:null;
+  // If suitability report category and case fields filled, create/update service case
+  if(cat==='Suitability report'&&gv('tk_sc_cat')){
+    if(!cl.cases)cl.cases=[];
+    const caseData={
+      category:gv('tk_sc_cat'),
+      adviceType:gv('tk_sc_at'),
+      status:gv('tk_sc_st')||'Suitability Report',
+      date:now.toISOString().slice(0,10),
+      targetDate:gv('tk_sc_tgt'),
+      adviser:gv('tk_adv'),
+      paraplanner:'',
+      product:gv('tk_sc_prod'),
+      amount:Number(gv('tk_sc_amt'))||null,
+      provider:gv('tk_sc_prv'),
+      srBrief:gv('tk_sc_notes'),
+      docsRequired:gv('tk_sc_docs'),
+      riskProfile:gv('tk_sc_risk'),
+      amlChecked:false,srIssued:false,preSale:false,postSale:false,
+      loa:false,loaDate:'',providerRef:'',bankVerified:null,
+      notes:gv('tk_sc_notes'),outcome:'',rejReason:'',wType:'',wGross:null,wTaxFree:null,wTaxable:null,wPayDate:'',wHMRC:false
+    };
+    if(caseId){
+      // Update existing linked case
+      const i=cl.cases.findIndex(x=>x.id===caseId);
+      if(i>-1)cl.cases[i]={...cl.cases[i],...caseData};
+    } else {
+      // Create new case
+      caseId='CS'+Date.now();
+      cl.cases.push({id:caseId,...caseData});
+      logAudit('CREATE','case','Auto-created service case: '+gv('tk_sc_cat')+' (from SR task)',{cid,cn:fnd(cl)});
+    }
+    toast('Task saved + service case '+(caseId?'updated':'created'));
+  }
+  const d={cid,cn:cl?fnd(cl):'',title:gv('tk_ti'),category:cat,priority:gv('tk_pri'),due:gv('tk_due'),adviser:gv('tk_adv'),assignedRole:gv('tk_role')||'Adviser',done:gv('tk_done')==='true',notes:gv('tk_no'),created:now.toISOString().slice(0,10),caseId:caseId||null};
   if(tid&&tid!=='null'){const i=db.tk.findIndex(x=>x.id===tid);if(i>-1)db.tk[i]={...db.tk[i],...d};}
   else db.tk.push({id:db.ti++,...d});
-  sDb();logAudit('UPDATE','task',(tid&&tid!=='null'?'Updated':'Created')+' task: '+gv('tk_ti'),{cid:parseInt(gv('tk_c')),cn:db.cl.find(x=>x.id===parseInt(gv('tk_c')))?.firstName||''});closeM();updB();if(vw==='tasks')rV();else sTab('tasks');toast('Task saved');
+  sDb();logAudit('UPDATE','task',(tid&&tid!=='null'?'Updated':'Created')+' task: '+gv('tk_ti'),{cid,cn:fnd(cl||{})});closeM();updB();if(vw==='tasks')rV();else sTab('tasks');
+  if(cat!=='Suitability report')toast('Task saved');
 }
 function toggleTask(tid){
   const t=db.tk.find(x=>x.id===tid);if(!t)return;
@@ -4328,7 +4454,7 @@ function renderLoginCard(){
       '<div class="login-users">'+
         USERS.map(u=>'<button class="login-user'+(_selUser&&_selUser.id===u.id?' sel':'')+'" onclick="selUser(\''+u.id+'\')">'+
           '<div class="login-user-name">'+u.name+'</div>'+
-          '<div class="login-user-role">'+(u.role==='admin'?'Administrator':'Adviser')+'</div>'+
+          '<div class="login-user-role">'+roleLabel(u.role)+'</div>'+
         '</button>').join('')+
       '</div>'+
       '<label class="login-label">Enter PIN</label>'+
@@ -4379,19 +4505,19 @@ function setViewAs(adv){
 }
 function renderTopbarUser(){
   const el=document.getElementById('topbar-user');if(!el||!_session)return;
-  const auditNav=document.getElementById('ni-audit');if(auditNav)auditNav.style.display=isAdmin()?'':'none';
+  const auditNav=document.getElementById('ni-audit');if(auditNav)auditNav.style.display=isManagement()?'':'none';
   const u=_session.user;
   const initials=u.name.split(' ').map(w=>w[0]).slice(0,2).join('');
   const viewingAs=_session.viewAs;
   el.innerHTML=
-    (isAdmin()?
+    (isManagement()?
       '<select onchange="setViewAs(this.value)" style="font-size:11px;padding:4px 8px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg);color:var(--txt);font-family:var(--font-ui)">'+
       '<option value="">All advisers</option>'+
       ADV.map(a=>'<option value="'+a+'" '+(viewingAs===a?'selected':'')+'>View as: '+a+'</option>').join('')+
       '</select>':'')+
     '<div class="user-avatar">'+initials+'</div>'+
     '<div style="font-size:11px"><div style="font-weight:600">'+u.name+'</div>'+
-    '<div style="font-size:10px;color:var(--txt2)">'+(u.role==='admin'?'Administrator':'Adviser')+'</div></div>'+
+    '<div style="font-size:10px;color:var(--txt2)">'+roleLabel(u.role)+'</div></div>'+
     '<button class="btn btn-sm" onclick="logout()">Sign out</button>';
 }
 function logout(){
@@ -4404,8 +4530,12 @@ function seedAudit(){db.au=[{"id":"au_d7_3","ts":"2025-02-06T21:00:00.000Z","use
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function bootApp(){
-  if(!lDb()||db.cl.length===0){buildDb();sDb();}
-  if(db.au.length===0){seedAudit();sDb();}
+  if(!lDb()){
+    // Clear any stale/empty entry before building fresh
+    try{localStorage.removeItem(SK);}catch(e){}
+    buildDb();sDb();
+  }
+  if(!db.au||db.au.length===0){seedAudit();sDb();}
   renderTopbarUser();
   updViewAsBar();
   nav('dashboard');updB();
