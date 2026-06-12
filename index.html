@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1B2A4A">
 <title>Nexus IFA — Practice Management</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -127,7 +131,72 @@ tbody tr{cursor:pointer}
 .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .warn{background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:var(--r);padding:9px 12px;font-size:11px;color:var(--amber-txt);margin-bottom:11px}
 .flags{display:flex;flex-wrap:wrap;gap:3px;margin:5px 0}
-@media(max-width:800px){.sb{width:46px;min-width:46px}.sb-name,.sb-sub,.ns,.ni span,.nb{display:none}.ni{justify-content:center;padding:9px}.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){
+  /* Sidebar collapses to icon rail */
+  .sb{width:46px;min-width:46px}
+  .sb-name,.sb-sub,.ns,.ni span,.nb{display:none}
+  .ni{justify-content:center;padding:9px}
+  /* Grids stack */
+  .g4{grid-template-columns:1fr 1fr}
+  .g2{grid-template-columns:1fr}
+  /* Tables scroll horizontally */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Topbar wraps */
+  .topbar{flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .pt{font-size:13px}
+  /* Hide adviser filter on small screens for advisers (admins still see it) */
+  #af{display:none!important}
+  /* Content padding */
+  .content{padding:12px 10px}
+}
+@media(max-width:540px){
+  /* Full mobile — sidebar hides entirely, replaced by bottom nav */
+  .sb{display:none}
+  .app{flex-direction:column}
+  .main{height:100vh}
+  /* Bottom navigation bar */
+  .mobile-nav{display:flex!important}
+  /* Content gets bottom padding so it doesn't hide behind mobile nav */
+  .content{padding:10px 10px 70px;height:calc(100vh - 48px - 56px);overflow-y:auto}
+  /* Topbar compact */
+  .topbar{padding:8px 12px;gap:6px}
+  .pt{font-size:13px;font-weight:600}
+  #sw{display:none!important}
+  /* KPI grid 2-col on phone */
+  .g4{grid-template-columns:1fr 1fr;gap:8px}
+  .g2{grid-template-columns:1fr;gap:10px}
+  /* Cards */
+  .card{padding:12px}
+  /* Tables on mobile — key columns only via CSS */
+  table{font-size:11px}
+  th,td{padding:6px 6px!important}
+  /* Modals full screen on mobile */
+  .modal-box{width:100%!important;max-width:100%!important;max-height:100vh!important;border-radius:var(--rl) var(--rl) 0 0!important;margin-top:auto}
+  .modal{align-items:flex-end!important}
+  /* Tabs scroll */
+  .tabs{gap:0;-webkit-overflow-scrolling:touch}
+  .tab{padding:8px 10px;font-size:11px}
+  /* Topbar right side */
+  #cta{font-size:11px;padding:5px 8px}
+  .topbar-user{display:none}
+  /* Login card */
+  .login-card{width:calc(100vw - 32px);padding:24px 20px}
+  /* Portal */
+  .portal-nav{-webkit-overflow-scrolling:touch}
+  .portal-content{padding:12px}
+  .portal-section{max-width:100%}
+  .portal-hero{flex-direction:column;align-items:flex-start}
+  .portal-hero-name{font-size:16px}
+  /* Viewas bar */
+  .view-as-bar{flex-wrap:wrap;font-size:10px;padding:5px 10px}
+}
+/* Mobile bottom nav — hidden by default, shown on mobile */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid rgba(255,255,255,.1);z-index:200;height:56px;align-items:stretch}
+.mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.55);font-size:9px;font-weight:500;gap:2px;padding:4px 0;border:none;background:none;font-family:var(--font-ui);transition:color .15s;text-transform:uppercase;letter-spacing:.03em}
+.mobile-nav-item:active{background:rgba(255,255,255,.08)}
+.mobile-nav-item.active{color:#fff}
+.mobile-nav-item svg,.mobile-nav-icon{font-size:18px;line-height:1}
+.mobile-nav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--red-txt);color:#fff;border-radius:10px;font-size:8px;font-weight:700;padding:1px 4px;min-width:14px;text-align:center}
 .login-wrap{position:fixed;inset:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;z-index:999}
 .login-card{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:32px 36px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
 .login-logo{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px}
@@ -196,10 +265,11 @@ tbody tr{cursor:pointer}
 <div class="sb">
   <div class="sb-logo"><div class="sb-name">Nexus</div><div class="sb-sub">Practice Management</div></div>
   <div class="nav-scroll">
+    <div class="ni active" id="ni-dashboard" onclick="nav('dashboard')">&#x1F3E0; <span>Dashboard</span></div>
     <div class="ns">Pipeline</div>
     <div class="ni" id="ni-leads" onclick="nav('leads')">&#x1F50D; <span>Leads</span><span class="nb" id="leads-nb" style="display:none">0</span></div>
     <div class="ns">Clients</div>
-    <div class="ni active" id="ni-clients" onclick="nav('clients')">&#x1F465; <span>All clients</span></div>
+    <div class="ni" id="ni-clients" onclick="nav('clients')">&#x1F465; <span>All clients</span></div>
     <div class="ni" id="ni-add" onclick="nav('add')">&#x2795; <span>Add client</span></div>
     <div class="ns">Reviews</div>
     <div class="ni" id="ni-cal" onclick="nav('cal')">&#x1F4C5; <span>Calendar</span></div>
@@ -218,7 +288,6 @@ tbody tr{cursor:pointer}
     <div class="ni" id="ni-audit" onclick="nav('audit')" style="display:none">&#x1F512; <span>Audit trail</span></div>
     <div class="ni" id="ni-approvals" onclick="nav('approvals')" style="display:none">&#x1F4EC; <span>Approvals</span><span class="nb red" id="approvals-nb" style="display:none">0</span></div>
     <div class="ns">Reporting</div>
-    <div class="ni" id="ni-reports" onclick="nav('reports')">&#x1F4CA; <span>Reports</span></div>
     <div class="ni" id="ni-export" onclick="nav('export')">&#x2B07; <span>Export</span></div>
   <div style="padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto">
     <button class="btn btn-sm" onclick="logout()" style="width:100%;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:11px">&#x2192; Sign out</button>
@@ -228,7 +297,7 @@ tbody tr{cursor:pointer}
 <div class="main">
   <div class="topbar">
     <div class="flex">
-      <div class="pt" id="pt">All clients</div>
+      <div class="pt" id="pt">Dashboard</div>
       <div id="cal-nav" style="display:none;align-items:center;gap:4px">
         <button class="btn btn-sm" onclick="chM(-1)">&#8249;</button>
         <span id="cal-lbl" style="font-size:11px;font-weight:600;min-width:104px;text-align:center"></span>
@@ -250,7 +319,39 @@ tbody tr{cursor:pointer}
   <div class="content" id="content"><div class="empty">Loading...</div></div>
 </div>
 </div>
-<div class="modal-bg" id="mb"></div><div class="modal" id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center" onclick="if(event.target===this)closeM()"><div class="modal-box" style="background:var(--bg);border-radius:var(--rl);width:90%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bdr)"><div class="modal-title" style="font-weight:600;font-size:14px"></div><button onclick="closeM()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt2);line-height:1">&times;</button></div><div class="modal-body" style="padding:18px;overflow-y:auto;flex:1"></div><div class="modal-footer" style="padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:8px;align-items:center"></div></div></div>
+<!-- Mobile bottom navigation -->
+<div class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-item" id="mn-dashboard" onclick="nav('dashboard')" style="position:relative">
+    <span class="mobile-nav-icon">🏠</span>
+    <span>Home</span>
+  </button>
+  <button class="mobile-nav-item" id="mn-clients" onclick="nav('clients')" style="position:relative">
+    <span class="mobile-nav-icon">👥</span>
+    <span>Clients</span>
+  </button>
+  <button class="mobile-nav-item" id="mn-tasks" onclick="nav('tasks')" style="position:relative">
+    <span class="mobile-nav-icon">✅</span>
+    <span>Tasks</span>
+    <span id="mn-tasks-badge" style="display:none" class="mobile-nav-badge">0</span>
+  </button>
+  <button class="mobile-nav-item" id="mn-revs" onclick="nav('upcoming')" style="position:relative">
+    <span class="mobile-nav-icon">📅</span>
+    <span>Reviews</span>
+    <span id="mn-overdue-badge" style="display:none" class="mobile-nav-badge">!</span>
+  </button>
+  <button class="mobile-nav-item" id="mn-more" onclick="toggleMobileMenu()">
+    <span class="mobile-nav-icon">☰</span>
+    <span>More</span>
+  </button>
+</div>
+<!-- Mobile "more" menu -->
+<div id="mobile-more-menu" style="display:none;position:fixed;bottom:56px;left:0;right:0;background:var(--navy);border-top:1px solid rgba(255,255,255,.1);z-index:199;padding:8px 0">
+  <div onclick="nav('leads');toggleMobileMenu()" style="padding:12px 20px;color:rgba(255,255,255,.8);font-size:13px;display:flex;align-items:center;gap:12px;cursor:pointer">🔍 <span>Leads</span></div>
+  <div onclick="nav('cal');toggleMobileMenu()" style="padding:12px 20px;color:rgba(255,255,255,.8);font-size:13px;display:flex;align-items:center;gap:12px;cursor:pointer">📆 <span>Calendar</span></div>
+  <div onclick="nav('policies');toggleMobileMenu()" style="padding:12px 20px;color:rgba(255,255,255,.8);font-size:13px;display:flex;align-items:center;gap:12px;cursor:pointer">📄 <span>Policies</span></div>
+  <div onclick="nav('approvals');toggleMobileMenu()" style="padding:12px 20px;color:rgba(255,255,255,.8);font-size:13px;display:flex;align-items:center;gap:12px;cursor:pointer">📬 <span>Approvals</span></div>
+  <div onclick="logout()" style="padding:12px 20px;color:rgba(255,255,255,.5);font-size:13px;display:flex;align-items:center;gap:12px;cursor:pointer;border-top:1px solid rgba(255,255,255,.1);margin-top:4px">→ <span>Sign out</span></div>
+</div><div class="modal" id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center" onclick="if(event.target===this)closeM()"><div class="modal-box" style="background:var(--bg);border-radius:var(--rl);width:90%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bdr)"><div class="modal-title" style="font-weight:600;font-size:14px"></div><button onclick="closeM()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt2);line-height:1">&times;</button></div><div class="modal-body" style="padding:18px;overflow-y:auto;flex:1"></div><div class="modal-footer" style="padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:8px;align-items:center"></div></div></div>
 <div id="toast"></div>
 <div class="login-wrap" id="login-wrap"><div class="login-card" id="login-card"></div></div>
 <div class="portal" id="portal">
@@ -794,8 +895,17 @@ function nav(v,id){
   const cta=document.getElementById('cta'),cl=document.getElementById('cta-lbl');
   if(v==='leads'){cl.textContent='+ New lead';cta.onclick=()=>oAddLead();}
   else{cl.textContent='+ New client';cta.onclick=()=>nav('add');}
-  const titles={clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',reports:'Reports',export:'Export data',cd:'Client record',ld:'Lead record',approvals:'Pending approvals'};
+  const titles={dashboard:'Dashboard',clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',export:'Export data',cd:'Client record',ld:'Lead record',approvals:'Pending approvals'};
   document.getElementById('pt').textContent=titles[v]||v;
+  // Mobile nav active state
+  ['dashboard','clients','tasks','revs'].forEach(id=>{
+    const el=document.getElementById('mn-'+id);
+    if(el)el.classList.toggle('active',
+      (id==='dashboard'&&v==='dashboard')||(id==='clients'&&(v==='clients'||v==='cd'))||(id==='tasks'&&v==='tasks')||(id==='revs'&&(v==='upcoming'||v==='revs'||v==='overdue'))
+    );
+  });
+  // Close mobile more menu on navigation
+  const mm=document.getElementById('mobile-more-menu');if(mm)mm.style.display='none';
   updB();rV();
 }
 function updB(){
@@ -807,7 +917,11 @@ function updB(){
   const tb=document.getElementById('tasks-nb');if(tb){tb.style.display=tv>0?'':'none';tb.textContent=tv;}
   const pv=(db.pa||[]).filter(p=>p.status==='pending'&&canSee(p.adviser)).length;
   const pb=document.getElementById('approvals-nb');if(pb){pb.style.display=pv>0?'':'none';pb.textContent=pv;}
-  const appNav=document.getElementById('ni-approvals');if(appNav)appNav.style.display='';}
+  const appNav=document.getElementById('ni-approvals');if(appNav)appNav.style.display='';
+  // Mobile nav badges
+  const mtb=document.getElementById('mn-tasks-badge');if(mtb){mtb.style.display=tv>0?'':'none';mtb.textContent=tv;}
+  const mob=document.getElementById('mn-overdue-badge');if(mob){mob.style.display=ov>0?'':'none';}
+}
 
 function rV(){
   const el=document.getElementById('content');
@@ -822,7 +936,8 @@ function rV(){
   else if(vw==='overdue')el.innerHTML=pgRevs(db.rv.filter(x=>x.status==='Overdue'));
   else if(vw==='policies')el.innerHTML=pgPols();
   else if(vw==='fees')el.innerHTML=pgFees();
-  else if(vw==='reports')el.innerHTML=pgRep();
+  else if(vw==='dashboard')el.innerHTML=pgDashboard();
+  else if(vw==='reports')el.innerHTML=pgDashboard();
   else if(vw==='tasks')el.innerHTML=pgTasks();
   else if(vw==='households')el.innerHTML=pgHouseholds();
   else if(vw==='hd')el.innerHTML=pgHD();
@@ -1770,58 +1885,140 @@ function pgFees(){
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
-function pgRep(){
-  const adf=afl();const cls=db.cl.filter(c=>!adf||c.adviser===adf);
+function pgDashboard(){
+  const adf=afl();
+  const cls=db.cl.filter(c=>!adf||c.adviser===adf);
+  const today=now.toISOString().slice(0,10);
+  const week=new Date(now.getTime()+7*864e5).toISOString().slice(0,10);
+
+  // Key metrics
   const tA=cls.reduce((s,c)=>s+(c.pols||[]).reduce((ps,p)=>ps+(p.value||0),0),0);
   const tF=cls.reduce((s,c)=>s+(c.fees||[]).filter(f=>f.status==='Active').reduce((fs,f)=>fs+(f.amount||0),0),0);
-  const kp=cls.filter(c=>!c.kyc).length,vul=cls.filter(c=>c.vulnerable).length;
-  const ov=db.rv.filter(rv=>rv.status==='Overdue'&&(!adf||rv.adviser===adf)).length;
-  const nw=cls.filter(c=>!c.ff?.wil).length,ns=cls.filter(c=>!c.ff?.spf).length;
   const oc=cls.flatMap(c=>c.cases||[]).filter(cs=>!['Complete','Not Proceeding','Rejected'].includes(cs.status)).length;
-  const byA=ADV.map(a=>{const ac=db.cl.filter(c=>c.adviser===a);return{name:a,clients:ac.length,aum:ac.reduce((s,c)=>s+(c.pols||[]).reduce((ps,p)=>ps+(p.value||0),0),0),fees:ac.reduce((s,c)=>s+(c.fees||[]).filter(f=>f.status==='Active').reduce((fs,f)=>fs+(f.amount||0),0),0),open:ac.flatMap(c=>c.cases||[]).filter(cs=>!['Complete','Not Proceeding','Rejected'].includes(cs.status)).length};});
-  const cats={};cls.forEach(cl2=>(cl2.cases||[]).forEach(cs=>{cats[cs.category]=(cats[cs.category]||0)+1;}));
+
+  // Action items
+  const overdueRevs=db.rv.filter(rv=>rv.status==='Overdue'&&(!adf||rv.adviser===adf));
+  const overdueTasks=db.tk.filter(t=>!t.done&&t.due<today&&(!adf||t.adviser===adf));
+  const dueSoonTasks=db.tk.filter(t=>!t.done&&t.due>=today&&t.due<=week&&(!adf||t.adviser===adf));
+  const upcomingRevs=db.rv.filter(rv=>rv.status==='Scheduled'&&rv.date>=today&&rv.date<=week&&(!adf||rv.adviser===adf)).sort((a,b)=>a.date.localeCompare(b.date));
+  const pendingApprovals=(db.pa||[]).filter(p=>p.status==='pending'&&(!adf||p.adviser===adf));
+  const activeLeads=db.ld.filter(l=>(l.status==='Initial'||l.status==='Proceeding')&&(!adf||l.adviser===adf));
+  const kycPending=cls.filter(c=>!c.kyc);
+
+  // Action card helper — clickable, with count badge
+  function actionCard(icon,title,count,subtitle,navTarget,severity){
+    const col=severity==='red'?'var(--red-txt)':severity==='amber'?'var(--amber-txt)':'var(--green-txt)';
+    const bg=severity==='red'?'var(--red-bg)':severity==='amber'?'var(--amber-bg)':'var(--green-bg)';
+    const bdr=severity==='red'?'var(--red-bdr)':severity==='amber'?'var(--amber-bdr)':'var(--green-bdr)';
+    return`<div onclick="${navTarget}" style="background:var(--bg);border:1px solid var(--bdr);border-left:3px solid ${count>0?col:'var(--bdr)'};border-radius:var(--rl);padding:12px 14px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--bg)'">
+      <div style="font-size:20px;flex-shrink:0">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:12px;color:var(--txt)">${title}</div>
+        <div style="font-size:10px;color:var(--txt2);margin-top:1px">${subtitle}</div>
+      </div>
+      <div style="background:${count>0?bg:'var(--bg3)'};color:${count>0?col:'var(--txt3)'};border:1px solid ${count>0?bdr:'var(--bdr)'};border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;flex-shrink:0">${count}</div>
+    </div>`;
+  }
+
+  // Upcoming reviews list
+  const upcomingRevHtml=upcomingRevs.length?upcomingRevs.slice(0,5).map(rv=>
+    `<div class="dr" style="cursor:pointer" onclick="nav('cd',${rv.cid})">
+      <div style="display:flex;align-items:center;gap:7px;min-width:0">
+        <div class="av" style="width:24px;height:24px;font-size:9px;flex-shrink:0">${ini(rv.cn)}</div>
+        <span class="ellipsis" style="font-size:11px;font-weight:500">${rv.cn}</span>
+      </div>
+      <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="font-size:10px;color:var(--txt2)">${fd(rv.date)}</span>
+        <span class="badge bk" style="font-size:9px">${rv.type}</span>
+      </span>
+    </div>`
+  ).join(''):'<div style="font-size:11px;color:var(--txt2)">No reviews in the next 7 days.</div>';
+
+  // Overdue tasks list
+  const overdueTaskHtml=overdueTasks.length?overdueTasks.slice(0,5).map(t=>
+    `<div class="dr" style="cursor:pointer" onclick="nav('cd',${t.cid})">
+      <div style="min-width:0">
+        <div style="font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+        <div style="font-size:10px;color:var(--txt2)">${t.cn}</div>
+      </div>
+      <span style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span class="badge ${{High:'br',Medium:'ba',Low:'bk'}[t.priority]||'bk'}">${t.priority}</span>
+        <span style="font-size:10px;color:var(--red-txt)">${fd(t.due)}</span>
+      </span>
+    </div>`
+  ).join(''):'<div style="font-size:11px;color:var(--txt2)">No overdue tasks.</div>';
+
+  // Practice stats
   const rd={c:cls.filter(c=>c.risk<=3).length,m:cls.filter(c=>c.risk>=4&&c.risk<=6).length,a:cls.filter(c=>c.risk>=7).length};
-  const ls={t:db.ld.length,p:db.ld.filter(l=>l.status==='Proceeding').length,i:db.ld.filter(l=>l.status==='Initial').length,n:db.ld.filter(l=>l.status==='Not Proceeding').length};
-  return`<div class="g4">
-    <div class="sc"><div class="sl">Clients</div><div class="sv">${cls.length}</div></div>
-    <div class="sc"><div class="sl">Total AUM</div><div class="sv" style="font-size:14px">${fm(tA)}</div></div>
-    <div class="sc"><div class="sl">Annual fees</div><div class="sv" style="font-size:14px">${fm(tF)}</div></div>
-    <div class="sc"><div class="sl">Open cases</div><div class="sv" style="${oc>0?'color:var(--amber-txt)':''}">${oc}</div></div>
+  const byA=ADV.map(a=>{const ac=db.cl.filter(c=>c.adviser===a);return{name:a,clients:ac.length,aum:ac.reduce((s,c)=>s+(c.pols||[]).reduce((ps,p)=>ps+(p.value||0),0),0),fees:ac.reduce((s,c)=>s+(c.fees||[]).filter(f=>f.status==='Active').reduce((fs,f)=>fs+(f.amount||0),0),0)};});
+
+  const greeting=(()=>{const h=now.getHours();return h<12?'Good morning':h<17?'Good afternoon':'Good evening';})();
+  const userName=_session?_session.user.name.split(' ')[0]:'';
+
+  return`
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--navy)">${greeting}${userName?', '+userName:''}.</div>
+      <div style="font-size:11px;color:var(--txt2);margin-top:2px">${fd(today)} &bull; ${cls.length} clients &bull; ${fm(tA)} AUM</div>
+    </div>
+    <button class="btn btn-p btn-sm" onclick="nav('add')">+ New client</button>
   </div>
+
+  <!-- KPI strip -->
+  <div class="g4" style="margin-bottom:16px">
+    <div class="sc" style="cursor:pointer" onclick="nav('clients')"><div class="sl">Total clients</div><div class="sv">${cls.length}</div></div>
+    <div class="sc" style="cursor:pointer" onclick="nav('clients')"><div class="sl">Total AUM</div><div class="sv" style="font-size:14px">${fm(tA)}</div></div>
+    <div class="sc" style="cursor:pointer" onclick="nav('feeledger')"><div class="sl">Annual fees</div><div class="sv" style="font-size:14px">${fm(tF)}</div></div>
+    <div class="sc" style="cursor:pointer" onclick="nav('tasks')"><div class="sl">Open cases</div><div class="sv" style="${oc>0?'color:var(--amber-txt)':''}">${oc}</div></div>
+  </div>
+
+  <!-- Action items -->
+  <div style="font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Actions required</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:20px">
+    ${actionCard('⚠️','Overdue reviews',overdueRevs.length,'Require immediate rescheduling',"nav('overdue')",overdueRevs.length?'red':'green')}
+    ${actionCard('✅','Overdue tasks',overdueTasks.length,'Past their due date',"nav('tasks')",overdueTasks.length?'red':'green')}
+    ${actionCard('📬','Pending approvals',pendingApprovals.length,'Client portal changes awaiting review',"nav('approvals')",pendingApprovals.length?'amber':'green')}
+    ${actionCard('🔍','Active leads',activeLeads.length,'Require follow-up',"nav('leads')",activeLeads.length?'amber':'green')}
+    ${actionCard('📋','Tasks due this week',dueSoonTasks.length,'Coming up in the next 7 days',"nav('tasks')",'amber')}
+    ${actionCard('🔒','KYC pending',kycPending.length,'Clients without verified KYC',"nav('clients')",kycPending.length?'amber':'green')}
+  </div>
+
+  <!-- Two-column detail -->
   <div class="g2">
-    <div class="card"><div style="font-size:11px;font-weight:600;margin-bottom:9px">Adviser breakdown</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600">Reviews this week</div>
+        <button class="btn btn-sm" onclick="nav('upcoming')">View all</button>
+      </div>
+      ${upcomingRevHtml}
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:600">Overdue tasks</div>
+        <button class="btn btn-sm" onclick="nav('tasks')">View all</button>
+      </div>
+      ${overdueTaskHtml}
+    </div>
+    <div class="card">
+      <div style="font-size:11px;font-weight:600;margin-bottom:10px">Practice breakdown</div>
       <table style="width:100%;font-size:11px;border-collapse:collapse">
-        <thead><tr>${['Adviser','Clients','AUM','Fees/yr','Open cases'].map(h=>`<th style="text-align:${h==='Adviser'?'left':'right'};padding:4px 0;font-size:9px;color:var(--txt2);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--bdr)">${h}</th>`).join('')}</tr></thead>
-        <tbody>${byA.map(a=>`<tr><td style="padding:5px 0">${a.name}</td><td style="text-align:right;padding:5px 0">${a.clients}</td><td style="text-align:right;padding:5px 0">${fm(a.aum)}</td><td style="text-align:right;padding:5px 0">${fm(a.fees)}</td><td style="text-align:right;padding:5px 0">${a.open}</td></tr>`).join('')}</tbody>
+        <thead><tr>${['Adviser','Clients','AUM','Fees/yr'].map(h=>`<th style="text-align:${h==='Adviser'?'left':'right'};padding:4px 0;font-size:9px;color:var(--txt2);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--bdr)">${h}</th>`).join('')}</tr></thead>
+        <tbody>${byA.map(a=>`<tr style="cursor:pointer" onclick="setViewAs('${a.name}');nav('clients')"><td style="padding:5px 0;font-weight:500">${a.name}</td><td style="text-align:right;padding:5px 0">${a.clients}</td><td style="text-align:right;padding:5px 0;color:var(--navy);font-weight:500">${fm(a.aum)}</td><td style="text-align:right;padding:5px 0">${fm(a.fees)}</td></tr>`).join('')}</tbody>
       </table>
     </div>
-    <div class="card"><div style="font-size:11px;font-weight:600;margin-bottom:9px">Compliance &amp; review alerts</div>
-      <div class="dr"><span class="dlabel">KYC pending</span><span><span class="badge ${kp>0?'ba':'bg'}">${kp}</span></span></div>
-      <div class="dr"><span class="dlabel">Vulnerable clients</span><span><span class="badge ${vul>0?'br':'bg'}">${vul}</span></span></div>
-      <div class="dr"><span class="dlabel">Overdue reviews</span><span><span class="badge ${ov>0?'br':'bg'}">${ov}</span></span></div>
-      <div class="dr"><span class="dlabel">No will on file</span><span><span class="badge ba">${nw}</span></span></div>
-      <div class="dr"><span class="dlabel">No state pension forecast</span><span><span class="badge ba">${ns}</span></span></div>
-      <div class="dr"><span class="dlabel">Active standing instructions</span><span>${db.fl.filter(f=>f.frequency!=='One-off'&&!f.endDate).length}</span></div>
-      <div class="dr"><span class="dlabel">Active ongoing fee entries</span><span>${db.fe.filter(f=>f.frequency!=='One-off'&&!f.endDate).length}</span></div>
-      <div class="dr"><span class="dlabel">Monthly fee run-rate</span><span>${fm(db.fe.filter(f=>f.frequency==='Monthly'&&!f.endDate).reduce((s,f)=>s+f.amount,0))}</span></div>
-      <div class="dr"><span class="dlabel">Overdue tasks</span><span><span class="badge ${db.tk.filter(t=>!t.done&&t.due<now.toISOString().slice(0,10)).length>0?'br':'bg'}">${db.tk.filter(t=>!t.done&&t.due<now.toISOString().slice(0,10)).length}</span></span></div>
-    </div>
-    <div class="card"><div style="font-size:11px;font-weight:600;margin-bottom:9px">Leads pipeline</div>
-      <div class="dr"><span class="dlabel">Total leads</span><span>${ls.t}</span></div>
-      <div class="dr"><span class="dlabel">Initial</span><span>${ls.i}</span></div>
-      <div class="dr"><span class="dlabel">Proceeding</span><span style="color:var(--navy)">${ls.p}</span></div>
-      <div class="dr"><span class="dlabel">Not proceeding</span><span>${ls.n}</span></div>
-    </div>
-    <div class="card"><div style="font-size:11px;font-weight:600;margin-bottom:9px">Cases by category</div>
-      ${Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([cat,n])=>`<div class="dr"><span class="dlabel ellipsis" style="max-width:180px">${cat}</span><span>${n}</span></div>`).join('')||'<div style="color:var(--txt2);font-size:11px">No cases.</div>'}
-    </div>
-    <div class="card"><div style="font-size:11px;font-weight:600;margin-bottom:9px">Risk distribution</div>
-      <div class="dr"><span class="dlabel">Cautious (1-3)</span><span>${rd.c} (${cls.length?Math.round(rd.c/cls.length*100):0}%)</span></div>
-      <div class="dr"><span class="dlabel">Moderate (4-6)</span><span>${rd.m} (${cls.length?Math.round(rd.m/cls.length*100):0}%)</span></div>
-      <div class="dr"><span class="dlabel">Adventurous (7-10)</span><span>${rd.a} (${cls.length?Math.round(rd.a/cls.length*100):0}%)</span></div>
+    <div class="card">
+      <div style="font-size:11px;font-weight:600;margin-bottom:10px">Risk distribution</div>
+      <div class="dr"><span class="dlabel">Cautious (1–3)</span><span style="display:flex;align-items:center;gap:8px">${rd.c} clients<div style="width:80px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:${cls.length?Math.round(rd.c/cls.length*100):0}%;background:#8CCACA;height:100%"></div></div></span></div>
+      <div class="dr"><span class="dlabel">Moderate (4–6)</span><span style="display:flex;align-items:center;gap:8px">${rd.m} clients<div style="width:80px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:${cls.length?Math.round(rd.m/cls.length*100):0}%;background:var(--green);height:100%"></div></div></span></div>
+      <div class="dr"><span class="dlabel">Adventurous (7–10)</span><span style="display:flex;align-items:center;gap:8px">${rd.a} clients<div style="width:80px;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:${cls.length?Math.round(rd.a/cls.length*100):0}%;background:var(--navy);height:100%"></div></div></span></div>
+      <div class="sdiv" style="margin-top:12px">Leads pipeline</div>
+      <div class="dr"><span class="dlabel">Proceeding</span><span style="color:var(--navy);font-weight:600">${db.ld.filter(l=>l.status==='Proceeding'&&(!adf||l.adviser===adf)).length}</span></div>
+      <div class="dr"><span class="dlabel">Initial contact</span><span>${db.ld.filter(l=>l.status==='Initial'&&(!adf||l.adviser===adf)).length}</span></div>
     </div>
   </div>`;
 }
+function pgRep(){return pgDashboard();}
+
 
 function pgTasks(){
   const adf=afl();
@@ -4084,7 +4281,7 @@ function bootApp(){
   if(db.au.length===0){seedAudit();sDb();}
   renderTopbarUser();
   updViewAsBar();
-  nav('clients');updB();
+  nav('dashboard');updB();
 }
 function updViewAsBar(){
   const bar=document.getElementById('viewas-bar');if(!bar||!_session)return;
@@ -4527,7 +4724,16 @@ function renderPreviewPortal(c){
   return tabsHtml+contentHtml;
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeM();});
+function toggleMobileMenu(){
+  const m=document.getElementById('mobile-more-menu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+}
+// Close more menu when clicking elsewhere
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('mobile-more-menu');
+  const btn=document.getElementById('mn-more');
+  if(menu&&btn&&!menu.contains(e.target)&&!btn.contains(e.target))menu.style.display='none';
+});
 
 
 document.addEventListener('DOMContentLoaded',function(){
