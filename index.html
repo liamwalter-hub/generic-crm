@@ -303,6 +303,7 @@ tbody tr{cursor:pointer}
     <div class="ni" id="ni-approvals" onclick="nav('approvals')" style="display:none">&#x1F4EC; <span>Approvals</span><span class="nb red" id="approvals-nb" style="display:none">0</span></div>
     <div class="ns">Reporting</div>
     <div class="ni" id="ni-export" onclick="nav('export')">&#x2B07; <span>Export</span></div>
+    <div class="ni" id="ni-import" onclick="nav('import')">&#x2B06; <span>Bulk import</span></div>
     <div class="ns">Support</div>
     <div class="ni" id="ni-help" onclick="navHelp()">&#x2753; <span>Help</span></div>
     <div style="padding:10px 10px 12px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto">
@@ -1230,7 +1231,7 @@ function nav(v,id){
   const cta=document.getElementById('cta'),cl=document.getElementById('cta-lbl');
   if(v==='leads'){cl.textContent='+ New lead';cta.onclick=()=>oAddLead();}
   else{cl.textContent='+ New client';cta.onclick=()=>nav('add');}
-  const titles={dashboard:'Dashboard',clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',export:'Export data',cd:'Client record',ld:'Lead record',approvals:'Pending approvals',help:'Help & User Guide'};
+  const titles={dashboard:'Dashboard',clients:'All clients',leads:'Leads',add:'New client',cal:'Review calendar',revs:'All reviews',upcoming:'Upcoming reviews',overdue:'Overdue reviews',policies:'Policies',fees:'Fees',tasks:'Tasks',households:'Households',hd:'Household record',investments:'Investments',audit:'Audit trail',flows:'Cash flows',feeledger:'Fees ledger',export:'Export data',import:'Bulk import',cd:'Client record',ld:'Lead record',approvals:'Pending approvals',help:'Help & User Guide'};
   document.getElementById('pt').textContent=titles[v]||v;
   // Mobile nav active state
   ['dashboard','clients','tasks','revs'].forEach(id=>{
@@ -1282,6 +1283,7 @@ function rV(){
   else if(vw==='flows')el.innerHTML=pgFlows();
   else if(vw==='feeledger')el.innerHTML=pgFeeLedger();
   else if(vw==='export')el.innerHTML=pgExp();
+  else if(vw==='import')el.innerHTML=pgImport();
   else if(vw==='approvals')el.innerHTML=pgApprovals();
   // Spacer so last item is never hidden behind the mobile nav bar
   el.innerHTML+='<div style="height:80px;flex-shrink:0" aria-hidden="true"></div>';
@@ -1403,6 +1405,447 @@ function expFullDb(){
   const a=document.createElement('a');a.href=u;a.download='bespoke_crm_backup_'+now.toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
   toast('Full backup downloaded');
 }
+
+// ── Bulk Import ───────────────────────────────────────────────────────────────
+let _importState={type:null,rows:[],errors:[],preview:null};
+
+const IMPORT_TYPES={
+  valuations:{
+    label:'Policy valuations',
+    desc:'Update current values for existing policies. Match by Client ID and policy ID.',
+    icon:'📈',
+    cols:['client_id','client_name','policy_id','policy_type','provider','current_value'],
+    required:['client_id','policy_id','current_value'],
+    notes:'client_name and provider are for reference only and are not imported.'
+  },
+  clients:{
+    label:'New clients',
+    desc:'Create new client records in bulk. Use Client ID only when updating existing records.',
+    icon:'👥',
+    cols:['client_id','title','first_name','last_name','dob','email','phone','address','marital_status','employment','adviser','risk_score','service_status'],
+    required:['first_name','last_name','adviser'],
+    notes:'Leave client_id blank to create a new client. Set client_id to update an existing one. adviser must exactly match an existing adviser name.'
+  },
+  policies:{
+    label:'Policies',
+    desc:'Add new policies to existing clients, or update existing policies.',
+    icon:'📄',
+    cols:['client_id','client_name','policy_id','policy_type','provider','plan_number','value','monthly_contrib','start_date','status'],
+    required:['client_id','policy_type','provider'],
+    notes:'Leave policy_id blank to create a new policy. policy_type must be one of: Pension, ISA, Stocks & Shares ISA, Cash ISA, GIA, Bond, SIPP, Drawdown, Annuity, Protection.'
+  },
+  reviews:{
+    label:'Reviews',
+    desc:'Schedule reviews for existing clients in bulk.',
+    icon:'📅',
+    cols:['client_id','client_name','date','time','review_type','location','adviser'],
+    required:['client_id','date'],
+    notes:'time format: HH:MM (e.g. 10:00). review_type defaults to Annual review if blank. location defaults to Office.'
+  },
+  tasks:{
+    label:'Tasks',
+    desc:'Create multiple tasks at once across clients.',
+    icon:'✅',
+    cols:['client_id','client_name','title','category','priority','due_date','adviser','assign_to','notes'],
+    required:['client_id','title','due_date'],
+    notes:'priority: High, Medium, or Low. assign_to: Adviser, Administrator, or Paraplanner. category must match existing categories.'
+  },
+  fees:{
+    label:'Fee arrangements',
+    desc:'Add ongoing or one-off fee arrangements to existing clients.',
+    icon:'£',
+    cols:['client_id','client_name','fee_type','description','basis','amount','frequency','status','policy_id'],
+    required:['client_id','fee_type','amount'],
+    notes:'basis: % of AUM, Fixed £, or Hourly. frequency: Monthly, Quarterly, Annual, One-off. status: Active or Inactive.'
+  },
+};
+
+function pgImport(){
+  const t=_importState.type;
+  const tabs=Object.entries(IMPORT_TYPES).map(([k,v])=>
+    '<div onclick="setImportType(\''+k+'\')" style="padding:9px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px;'+(t===k?'background:var(--navy);color:#fff;':'color:var(--txt2);')+' font-size:12px;font-weight:'+(t===k?'600':'400')+'">'+
+    '<span style="font-size:16px">'+v.icon+'</span><div><div>'+v.label+'</div></div></div>'
+  ).join('');
+
+  let main='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--txt2);font-size:13px">← Select an import type to get started</div>';
+
+  if(t){
+    const def=IMPORT_TYPES[t];
+    const preview=_importState.preview;
+    main='<div>'+
+      '<div style="margin-bottom:16px">'+
+        '<div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:4px">'+def.icon+' '+def.label+'</div>'+
+        '<div style="font-size:12px;color:var(--txt2);margin-bottom:8px">'+def.desc+'</div>'+
+        '<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--txt2)">'+
+          '<strong style="color:var(--txt)">Required columns:</strong> '+def.required.join(', ')+'<br>'+
+          '<strong style="color:var(--txt)">All columns:</strong> '+def.cols.join(', ')+'<br>'+
+          '<span style="color:var(--amber-txt)">ⓘ '+def.notes+'</span>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">'+
+        '<button class="btn btn-p btn-sm" onclick="dlImportTemplate(\''+t+'\')">&#x2B07; Download template</button>'+
+        '<button class="btn btn-sm" onclick="dlImportWithData(\''+t+'\')">&#x2B07; Download with existing data</button>'+
+      '</div>'+
+      '<div style="border:2px dashed var(--bdr2);border-radius:8px;padding:24px;text-align:center;margin-bottom:16px;background:var(--bg2)" '+
+        'id="import-drop" ondragover="event.preventDefault()" ondrop="handleImportDrop(event)">'+
+        '<div style="font-size:24px;margin-bottom:8px">📂</div>'+
+        '<div style="font-size:13px;font-weight:500;margin-bottom:4px">Drop your CSV file here</div>'+
+        '<div style="font-size:11px;color:var(--txt2);margin-bottom:12px">or click to browse</div>'+
+        '<input type="file" id="import-file" accept=".csv" style="display:none" onchange="handleImportFile(this)">'+
+        '<button class="btn btn-sm" onclick="document.getElementById(\'import-file\').click()">Browse files</button>'+
+      '</div>'+
+      (preview?renderImportPreview(preview,t):'');+
+    '</div>';
+  }
+
+  return'<div style="display:grid;grid-template-columns:220px 1fr;gap:0;height:calc(100vh - 110px);overflow:hidden">'+
+    '<div style="border-right:1px solid var(--bdr2);overflow-y:auto;padding:12px 8px">'+
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);padding:4px 12px 8px">Import type</div>'+
+      tabs+
+    '</div>'+
+    '<div style="overflow-y:auto;padding:24px 28px">'+main+'</div>'+
+  '</div>';
+}
+
+function setImportType(t){
+  _importState={type:t,rows:[],errors:[],preview:null};
+  rV();
+}
+
+function dlCsvFile(content,filename){
+  const b=new Blob([content],{type:'text/csv'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download=filename;a.click();
+  URL.revokeObjectURL(u);
+  toast('Downloaded '+filename);
+}
+
+function csvRow(vals){
+  return vals.map(v=>{
+    const s=String(v==null?'':v);
+    return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(',');
+}
+
+function dlImportTemplate(type){
+  const def=IMPORT_TYPES[type];
+  let csv=csvRow(def.cols)+'\n';
+  // Add one example row with hints
+  const ex={
+    valuations:['101','Mr Robert Hall','P1_0','Drawdown','Prudential','250000'],
+    clients:['','Mr','James','Wilson','1975-06-15','james.wilson@email.com','07700 900000','15 Oak Road, Solihull','Married','Employed','Emma Clarke','5','Active'],
+    policies:['101','Mr Robert Hall','','Pension','Aviva','AV-12345','85000','500','2015-03-01','In Force'],
+    reviews:['101','Mr Robert Hall','2026-09-15','10:00','Annual review','Office','Emma Clarke'],
+    tasks:['101','Mr Robert Hall','Send pension valuation','General admin','High','2026-07-30','Emma Clarke','Adviser',''],
+    fees:['101','Mr Robert Hall','Ongoing','Ongoing adviser charge','% of AUM','1800','Annual','Active',''],
+  }[type]||def.cols.map(()=>'');
+  csv+=csvRow(ex)+'\n';
+  dlCsvFile(csv,'template_'+type+'.csv');
+}
+
+function dlImportWithData(type){
+  const def=IMPORT_TYPES[type];
+  let csv=csvRow(def.cols)+'\n';
+  const adf=afl();
+  const clients=db.cl.filter(c=>!adf||c.adviser===adf);
+  if(type==='valuations'){
+    clients.forEach(c=>(c.pols||[]).forEach(p=>{
+      csv+=csvRow([c.id,fnd(c),p.id,p.type,p.provider,p.value||0])+'\n';
+    }));
+  } else if(type==='clients'){
+    clients.forEach(c=>{
+      csv+=csvRow([c.id,c.title,c.firstName,c.lastName,c.dob,c.email,c.phone,c.address,c.marital,c.employment,c.adviser,c.risk||5,c.svcStatus||'Active'])+'\n';
+    });
+  } else if(type==='policies'){
+    clients.forEach(c=>(c.pols||[]).forEach(p=>{
+      csv+=csvRow([c.id,fnd(c),p.id,p.type,p.provider,p.planNumber||'',p.value||0,p.monthlyContrib||0,p.startDate||'',p.planStatus||'In Force'])+'\n';
+    }));
+  } else if(type==='reviews'){
+    const revs=db.rv.filter(r=>!adf||r.adviser===adf);
+    revs.forEach(r=>{
+      csv+=csvRow([r.cid,r.cn,r.date,r.time||'',r.type,r.loc||'',r.adviser])+'\n';
+    });
+  } else if(type==='tasks'){
+    db.tk.filter(t=>!adf||t.adviser===adf).forEach(t=>{
+      csv+=csvRow([t.cid,t.cn,t.title,t.category,t.priority,t.due,t.adviser,t.assignedRole||'Adviser',t.notes||''])+'\n';
+    });
+  } else if(type==='fees'){
+    clients.forEach(c=>(c.fees||[]).forEach(f=>{
+      csv+=csvRow([c.id,fnd(c),f.type||'Ongoing',f.description||'',f.basis||'% of AUM',f.amount||0,f.frequency||'Annual',f.status||'Active',f.policyId||''])+'\n';
+    }));
+  }
+  dlCsvFile(csv,'export_'+type+'_'+now.toISOString().slice(0,10)+'.csv');
+}
+
+function parseCSV(text){
+  const lines=text.trim().split('\n').map(l=>l.trimEnd());
+  if(!lines.length)return{headers:[],rows:[]};
+  function parseLine(line){
+    const res=[];let cur='',inQ=false;
+    for(let i=0;i<line.length;i++){
+      if(line[i]==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+      else if(line[i]===','&&!inQ){res.push(cur.trim());cur='';}
+      else cur+=line[i];
+    }
+    res.push(cur.trim());
+    return res;
+  }
+  const headers=parseLine(lines[0]).map(h=>h.toLowerCase().trim().replace(/\s+/g,'_'));
+  const rows=lines.slice(1).filter(l=>l.trim()).map(l=>{
+    const vals=parseLine(l);
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=vals[i]||'');
+    return obj;
+  });
+  return{headers,rows};
+}
+
+function handleImportDrop(e){
+  e.preventDefault();
+  const file=e.dataTransfer.files[0];
+  if(file)readImportFile(file);
+}
+function handleImportFile(input){
+  const file=input.files[0];
+  if(file)readImportFile(file);
+}
+function readImportFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const {headers,rows}=parseCSV(text);
+    const type=_importState.type;
+    const def=IMPORT_TYPES[type];
+    // Validate headers
+    const missing=def.required.filter(r=>!headers.includes(r));
+    if(missing.length){toast('Missing required columns: '+missing.join(', '),'err');return;}
+    // Validate and enrich rows
+    const validated=validateImportRows(type,rows);
+    _importState.rows=rows;
+    _importState.preview=validated;
+    rV();
+    // Scroll to preview
+    setTimeout(()=>{const el=document.getElementById('import-preview');if(el)el.scrollIntoView({behavior:'smooth'});},100);
+  };
+  reader.readAsText(file);
+}
+
+function validateImportRows(type,rows){
+  const results=[];
+  rows.forEach((row,i)=>{
+    const errors=[];const warnings=[];let action='create';let target=null;
+    if(type==='valuations'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);
+      if(!c){errors.push('Client ID '+cid+' not found');}
+      else{
+        const p=(c.pols||[]).find(x=>x.id===row.policy_id);
+        if(!p){errors.push('Policy ID '+row.policy_id+' not found on client');}
+        else{
+          action='update';target=p;
+          const newVal=parseFloat(row.current_value);
+          if(isNaN(newVal)||newVal<0){errors.push('Invalid value: '+row.current_value);}
+          else{warnings.push('£'+fm(p.value||0)+' → £'+fm(newVal));}
+        }
+      }
+    } else if(type==='clients'){
+      if(!row.first_name||!row.last_name){errors.push('First and last name required');}
+      if(!ADV.includes(row.adviser)&&row.adviser){warnings.push('Adviser "'+row.adviser+'" not recognised');}
+      if(row.client_id){
+        const c=db.cl.find(x=>x.id===parseInt(row.client_id));
+        if(!c){errors.push('Client ID '+row.client_id+' not found (leave blank to create new)');}
+        else{action='update';target=c;}
+      }
+    } else if(type==='policies'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);
+      if(!c){errors.push('Client ID '+cid+' not found');}
+      if(!row.policy_type){errors.push('Policy type required');}
+      if(row.policy_id&&c){
+        const p=(c.pols||[]).find(x=>x.id===row.policy_id);
+        if(p){action='update';target=p;}else warnings.push('Policy ID not found — will create new');
+      }
+    } else if(type==='reviews'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);
+      if(!c){errors.push('Client ID '+cid+' not found');}
+      if(!row.date){errors.push('Date required');}
+      else if(!/^\d{4}-\d{2}-\d{2}$/.test(row.date)){errors.push('Date must be YYYY-MM-DD');}
+    } else if(type==='tasks'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);
+      if(!c){errors.push('Client ID '+cid+' not found');}
+      if(!row.title){errors.push('Title required');}
+      if(!row.due_date){errors.push('Due date required');}
+      else if(!/^\d{4}-\d{2}-\d{2}$/.test(row.due_date)){errors.push('Due date must be YYYY-MM-DD');}
+    } else if(type==='fees'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);
+      if(!c){errors.push('Client ID '+cid+' not found');}
+      if(!row.fee_type){errors.push('Fee type required');}
+      const amt=parseFloat(row.amount);
+      if(isNaN(amt)){errors.push('Invalid amount: '+row.amount);}
+    }
+    results.push({row,rowNum:i+2,errors,warnings,action,target});
+  });
+  return results;
+}
+
+function renderImportPreview(preview,type){
+  const total=preview.length;
+  const errored=preview.filter(r=>r.errors.length>0).length;
+  const valid=total-errored;
+  const creates=preview.filter(r=>r.action==='create'&&!r.errors.length).length;
+  const updates=preview.filter(r=>r.action==='update'&&!r.errors.length).length;
+  return'<div id="import-preview">'+
+    '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
+      '<div class="sc" style="flex:1;min-width:100px"><div class="sl">Total rows</div><div class="sv">'+total+'</div></div>'+
+      '<div class="sc" style="flex:1;min-width:100px"><div class="sl">Valid</div><div class="sv" style="color:var(--green-txt)">'+valid+'</div></div>'+
+      (creates?'<div class="sc" style="flex:1;min-width:100px"><div class="sl">New records</div><div class="sv">'+creates+'</div></div>':'')+
+      (updates?'<div class="sc" style="flex:1;min-width:100px"><div class="sl">Updates</div><div class="sv">'+updates+'</div></div>':'')+
+      (errored?'<div class="sc" style="flex:1;min-width:100px"><div class="sl">Errors</div><div class="sv" style="color:var(--red-txt)">'+errored+'</div></div>':'')+
+    '</div>'+
+    (errored?'<div style="background:var(--red-bg,#fef2f2);border:1px solid var(--red-bdr,#fca5a5);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--red-txt);margin-bottom:12px">'+
+      '⚠ '+errored+' row'+(errored>1?'s':'')+' have errors and will be skipped. Fix the CSV and re-upload, or proceed to import the valid rows only.'+
+    '</div>':'')+
+    '<div style="overflow-x:auto;margin-bottom:16px"><table style="width:100%;font-size:11px;border-collapse:collapse">'+
+      '<thead><tr style="background:var(--bg2)">'+
+        '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Row</th>'+
+        '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Status</th>'+
+        '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--bdr2)">Action</th>'+
+        '<th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--bdr2)">Details</th>'+
+      '</tr></thead>'+
+      '<tbody>'+preview.slice(0,200).map(r=>{
+        const hasErr=r.errors.length>0;
+        const bg=hasErr?'var(--red-bg,#fef2f2)':r.warnings.length?'var(--amber-bg,#fffbeb)':'';
+        const label=r.action==='update'?'<span class="badge ba">Update</span>':'<span class="badge bg">Create</span>';
+        const details=[...r.errors.map(e=>'<span style="color:var(--red-txt)">✗ '+e+'</span>'),
+                        ...r.warnings.map(w=>'<span style="color:var(--amber-txt)">→ '+w+'</span>')].join(' ');
+        // Show first few meaningful fields
+        const rowSummary=Object.entries(r.row).slice(0,4).filter(([,v])=>v).map(([k,v])=>'<span style="color:var(--txt2)">'+k+':</span> '+v).join('  ');
+        return'<tr style="border-bottom:1px solid var(--bdr);'+(bg?'background:'+bg:'')+'">'+
+          '<td style="padding:5px 8px;color:var(--txt2)">#'+r.rowNum+'</td>'+
+          '<td style="padding:5px 8px">'+(hasErr?'<span class="badge br">Error</span>':'<span class="badge bg">OK</span>')+'</td>'+
+          '<td style="padding:5px 8px">'+(hasErr?'<span style="color:var(--txt3)">Skip</span>':label)+'</td>'+
+          '<td style="padding:5px 8px;max-width:400px">'+
+            (details?'<div>'+details+'</div>':'')+
+            '<div style="font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:2px">'+rowSummary+'</div>'+
+          '</td>'+
+        '</tr>';
+      }).join('')+
+      (preview.length>200?'<tr><td colspan="4" style="padding:8px;text-align:center;color:var(--txt2)">… and '+(preview.length-200)+' more rows</td></tr>':'')+
+    '</tbody></table></div>'+
+    (valid>0?
+      '<div style="display:flex;gap:10px;align-items:center">'+
+        '<button class="btn btn-p" onclick="commitImport(\''+type+'\')">&#x2713; Import '+valid+' valid row'+(valid>1?'s':'')+'</button>'+
+        '<button class="btn" onclick="_importState.preview=null;rV()">Cancel</button>'+
+        '<span style="font-size:11px;color:var(--txt2)">'+errored+' row'+(errored!==1?'s':'')+' with errors will be skipped</span>'+
+      '</div>'
+    :'<div class="warn">No valid rows to import. Fix the errors in the CSV and try again.</div>')+
+  '</div>';
+}
+
+function commitImport(type){
+  const preview=_importState.preview;
+  const valid=preview.filter(r=>r.errors.length===0);
+  let count=0;
+  valid.forEach(({row,action,target})=>{
+    if(type==='valuations'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);if(!c)return;
+      const p=(c.pols||[]).find(x=>x.id===row.policy_id);if(!p)return;
+      p.value=parseFloat(row.current_value);count++;
+    } else if(type==='clients'){
+      if(row.client_id&&target){
+        if(row.first_name)target.firstName=row.first_name;
+        if(row.last_name)target.lastName=row.last_name;
+        if(row.title)target.title=row.title;
+        if(row.dob)target.dob=row.dob;
+        if(row.email)target.email=row.email;
+        if(row.phone)target.phone=row.phone;
+        if(row.address)target.address=row.address;
+        if(row.marital_status)target.marital=row.marital_status;
+        if(row.employment)target.employment=row.employment;
+        if(row.adviser&&ADV.includes(row.adviser))target.adviser=row.adviser;
+        if(row.risk_score)target.risk=parseInt(row.risk_score)||target.risk;
+        if(row.service_status)target.svcStatus=row.service_status;
+      } else {
+        const newC={id:db.ni++,recType:'client',title:row.title||'',firstName:row.first_name,lastName:row.last_name,
+          dob:row.dob||'',ni:'',email:row.email||'',phone:row.phone||'',address:row.address||'',
+          marital:row.marital_status||'Single',employment:row.employment||'Employed',employer:'',occupation:'',
+          smoker:'No',healthNotes:'',risk:parseInt(row.risk_score)||5,attNotes:'',
+          kycDate:'',kyc:false,aml:'Pending',vulnerable:false,
+          svcStatus:row.service_status||'Active',created:now.toISOString().slice(0,10),
+          adviser:row.adviser||ADV[0],pols:[],fees:[],ff:{},cases:[],docs:[],goals:[]};
+        db.cl.push(newC);
+      }
+      count++;
+    } else if(type==='policies'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);if(!c)return;
+      if(!c.pols)c.pols=[];
+      if(row.policy_id&&target){
+        target.type=row.policy_type||target.type;
+        target.provider=row.provider||target.provider;
+        target.planNumber=row.plan_number||target.planNumber;
+        target.value=parseFloat(row.value)||target.value;
+        target.monthlyContrib=parseFloat(row.monthly_contrib)||target.monthlyContrib;
+        if(row.start_date)target.startDate=row.start_date;
+        if(row.status)target.planStatus=row.status;
+      } else {
+        c.pols.push({id:'P'+c.id+'_'+Date.now(),type:row.policy_type,provider:row.provider,
+          planNumber:row.plan_number||'',value:parseFloat(row.value)||0,
+          monthlyContrib:parseFloat(row.monthly_contrib)||0,
+          startDate:row.start_date||now.toISOString().slice(0,10),
+          planStatus:row.status||'In Force',beneficiaries:'',notes:'',investments:[]});
+      }
+      count++;
+    } else if(type==='reviews'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);if(!c)return;
+      const adv=row.adviser||c.adviser;
+      db.rv.push({id:db.ri++,cid,cn:fnd(c),adviser:adv,
+        date:row.date,time:row.time||'10:00',
+        type:row.review_type||'Annual review',
+        loc:row.location||'Office',
+        status:'Scheduled',notes:'',
+        cl:CHL.map(t=>({t,done:false})),
+        outcome:'',nextDate:'',
+        aum:(c.pols||[]).reduce((s,p)=>s+(p.value||0),0)});
+      count++;
+    } else if(type==='tasks'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);if(!c)return;
+      db.tk.push({id:db.ti++,cid,cn:fnd(c),
+        title:row.title,category:row.category||'General admin',
+        priority:row.priority||'Medium',
+        due:row.due_date,adviser:row.adviser||c.adviser,
+        assignedRole:row.assign_to||'Adviser',
+        done:false,notes:row.notes||'',
+        created:now.toISOString().slice(0,10)});
+      count++;
+    } else if(type==='fees'){
+      const cid=parseInt(row.client_id);
+      const c=db.cl.find(x=>x.id===cid);if(!c)return;
+      if(!c.fees)c.fees=[];
+      c.fees.push({id:'F'+c.id+'_'+Date.now(),
+        type:row.fee_type,description:row.description||row.fee_type,
+        basis:row.basis||'% of AUM',amount:parseFloat(row.amount)||0,
+        frequency:row.frequency||'Annual',
+        status:row.status||'Active',
+        policyId:row.policy_id||''});
+      count++;
+    }
+  });
+  sDb();
+  logAudit('CREATE','import','Bulk import: '+IMPORT_TYPES[type].label+' — '+count+' records',{});
+  updB();
+  toast(count+' record'+(count!==1?'s':'')+' imported successfully');
+  _importState={type:_importState.type,rows:[],errors:[],preview:null};
+  rV();
+}
+
+
 
 function pgL(){
   const q=(document.getElementById('sq')||{}).value||'';const adf=afl();
